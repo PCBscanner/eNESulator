@@ -4,7 +4,18 @@ NES emulator written in C++
 ## Introduction
 This is my version of an emulator for the Nintendo Entertainment System. I've used this as a (rather ambitious) way to learn C++.\
 
-It is far from complete, but it has the following features:
+It is still WIP, but has been tested and confirmed running with the following roms:
+
+- Castlevania.
+- Donkey Kong.
+- Excitebike.
+- Ice Climber.
+- nestest
+- Super Mario Bros.
+
+
+## Features:
+- Official NES opcodes.
 - 1-player controls.
 - Mappers: iNES 000 & 002.
 - Horizontal and vertical scrolling.
@@ -16,6 +27,8 @@ It is far from complete, but it has the following features:
 - Battery-backed RAM.
 - Save states.
 - 2-player controls.
+- Work through the various test roms and fix issues as required.
+
 
 ## Prerequisites:
 SDL2 is used for handling the GUI and controller inputs.\
@@ -33,6 +46,7 @@ There were many references that helped me through this project. Some notable one
 - Famicom Party: https://famicom.party/
 - Emulation Online: https://www.emulationonline.com/systems/nes/
 - emudev: https://emudev.de/nes-emulator/overview/
+- nes-test-roms: https://github.com/christopherpow/nes-test-roms
 
 ## Disclaimer
 This program is not endorsed by Nintendo.
