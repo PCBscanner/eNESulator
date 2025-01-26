@@ -66,7 +66,7 @@ int main(int argc, char** args)
 
     //GAMES
     // std::string ROM = "../data/roms/1942.nes";
-    std::string ROM = "../data/roms/castlevania.nes";
+    // std::string ROM = "../data/roms/castlevania.nes";
     // std::string ROM = "../data/roms/dk.nes";
     // std::string ROM = "../data/roms/excitebike.nes";
     // std::string ROM = "../data/roms/f1_race.nes";
@@ -76,9 +76,11 @@ int main(int argc, char** args)
     // std::string ROM = "../data/roms/smb.nes";
 
     //UTILITIES
-    // std::string ROM = "../data/roms/controller.nes";
-    // std::string ROM = "../data/roms/palette_ram.nes";
-    // std::string ROM = "../data/roms/nestest.nes";
+    // std::string ROM = "../data/test_roms/controller.nes";
+    // std::string ROM = "../data/test_roms/nestest.nes";
+    // std::string ROM = "../data/test_roms/palette_ram.nes";
+    std::string ROM = "../data/test_roms/sprite_ram.nes";
+    // std::string ROM = "../data/test_roms/vram_access.nes";
 
     bus.LoadCartridge(ROM);
 

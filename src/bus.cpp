@@ -273,7 +273,7 @@ void Bus::WritePPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
             MirrorPPUAddr(Addr);
 
             PPUMemory[Addr] = Value;
-
+            // printf("Writing $%02x to $%04x\n", Value, Addr);
             IncrementPPUADDR(ppu);
         }break;
         case(0x4014): //OAMDMA
@@ -321,23 +321,21 @@ std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
         }break;
         case(0x2007): //PPUDATA
         {
+            std::uint16_t AddrVRAM = ppu.V;
 
-            std::uint16_t Addr = ppu.V;
+            MirrorPPUAddr(AddrVRAM); //this is now mirrored
 
-            MirrorPPUAddr(Addr);
-
-            ppu.PPUDATA = ppu.PPUDATABuffer;
-
-            //we shall return the PPU data buffer
-            Value = ppu.PPUDATABuffer;
-
-            //updating PPUDATABuffer
-            ppu.PPUDATABuffer = PPUMemory[Addr];
-
-            //...but we return the value immediately if we're reading from the palette
-            if(Addr >= 0x3F00)
+            if(AddrVRAM >= 0x3F00)
             {
-                Value = ppu.PPUDATABuffer;
+                Value = PPUMemory[AddrVRAM]; //directly returning the palette memory
+                std::uint16_t AddrVRAMShadow = ppu.V & 0x2FFF;      //getting to the "underlying" value in VRAM
+                MirrorPPUAddr(AddrVRAMShadow); //mirroring AGAIN
+                ppu.PPUDATABuffer = PPUMemory[AddrVRAMShadow]; //setting the data buffer to the "underlying" value in VRAM
+            }
+            else
+            {
+                Value = ppu.PPUDATABuffer; //normal buffering
+                ppu.PPUDATABuffer = PPUMemory[AddrVRAM];
             }
 
             IncrementPPUADDR(ppu);
