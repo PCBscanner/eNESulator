@@ -1,0 +1,5 @@
+Reset vector points to 0xc79e.
+Instruction is 0x78 = SEI
+0xc79f = 0xd8 = CLD
+0xc7a0 = 0xa9 = LDA, ABS. ADDR = whatever is stored at 0xc7a1 & 0xc7a2
+0xc7a2 = 0x8d = STA, ABS. ADDR = whatever is stored at 0xc7a3 & 0xc7a4
