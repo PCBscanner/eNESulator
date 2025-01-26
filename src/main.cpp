@@ -35,7 +35,7 @@ int main(int argc, char** args)
         return 1;
     }
 
-    SDL_Window* Window = SDL_CreateWindow("NES Emulator", 1000, 1000, WINDOW_WIDTH,
+    SDL_Window* Window = SDL_CreateWindow("eNESulator", 1000, 1000, WINDOW_WIDTH,
                                           WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_SetWindowResizable(Window, SDL_TRUE);
     if (Window == nullptr){
@@ -133,7 +133,6 @@ int main(int argc, char** args)
                     case(1):
                     {
                         bus.OAM[(bus.DMACycles - 1) >> 1] = cpu.DMAValue;
-                        // printf("bus.DMACycles - 1) >> 1: %03d, cpu.DMAValue: 0x%02x\n", (bus.DMACycles - 1) >> 1, cpu.DMAValue);
                     }break;
                 }
                 bus.DMACycles++;
