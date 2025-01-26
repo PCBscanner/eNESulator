@@ -3,6 +3,7 @@ NES emulator written in C++
 
 ## Introduction
 This is my version of an emulator for the Nintendo Entertainment System. I've used this as a (rather ambitious) way to learn C++.\
+
 It is far from complete, but it has the following features:
 - 1-player controls.
 - Mappers: iNES 000 & 002.
@@ -17,7 +18,9 @@ It is far from complete, but it has the following features:
 - 2-player controls.
 
 ## Prerequisites:
-SDL2 is used for handling the GUI and controller inputs.
+SDL2 is used for handling the GUI and controller inputs.\
+
+I have verified this is working with C++17 and C++20 on Fedora 41. Note that C++20 is only required if you want to use `std::format` to display hex numbers with the leading 0x on the GUI.
 
 ## Compiling, building, and running the emulator
 `clear && g++ -std=c++20 -o ../bin/eNESulator ../src/main.cpp ../src/bus.cpp ../src/ppu.cpp -lSDL2 -lSDL2_ttf && ../bin/eNESulator`
