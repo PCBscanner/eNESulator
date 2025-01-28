@@ -426,7 +426,7 @@ void PPU::Execute(Bus& bus)
         {
             Cycle++;
         }
-        if(Cycle == 1) //fetch the first NT byte. Separated from the below because the shifters only shift from the 2nd cycle...
+        else if(Cycle == 1) //fetch the first NT byte. Separated from the below because the shifters only shift from the 2nd cycle...
         {
             FetchLatchNTByte(bus);
             Cycle++;
