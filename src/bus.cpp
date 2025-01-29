@@ -136,12 +136,16 @@ void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
             CPUMemory[Addr] = Value;
             WritePPUBus(Value, Addr, ppu);
         }
-        else if(Addr == 0x4016)
+        else if(Addr == 0x4016) //joystick strobe
         {
             if((Value&1) == 1) //https://forums.nesdev.org/viewtopic.php?t=13985
             {
                 PollController();
             }
+        }
+        else if( ( (0x4000 <= Addr) && (Addr <= 0x4013) ) || (Addr == 0x4015) || (Addr == 0x4017) ) //APU registers
+        {
+            CPUMemory[Addr] = Value;
         }
         else if( (0x8000 <= Addr) && (Addr <= 0xFFFF)  ) //mapper select
         {
@@ -174,10 +178,18 @@ std::uint8_t Bus::ReadCPUBus(std::uint16_t Addr, PPU& ppu)
             Value = CPUMemory[Addr];
             std::uint8_t ValuePPU = ReadPPUBus(Addr, ppu); //to make sure we set the right flags
         }
-        else if(Addr == 0x4016)
+        else if(Addr == 0x4015) //APU sound channel and IRQ status
+        {
+            Value = CPUMemory[Addr];
+        }
+        else if(Addr == 0x4016) //joystick 1 data
         {
             Value = (ControllerP1Reg & 1) | 0b01000000; //extracting LSb.
             ControllerP1Reg = ControllerP1Reg >> 1;
+        }
+        else if(Addr == 0x4017) //joystick 2 data
+        {
+            //not yet implemented
         }
         else
         {

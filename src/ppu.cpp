@@ -418,7 +418,7 @@ void PPU::RenderPixel(Bus& bus)
 
 }
 
-void PPU::Execute(Bus& bus)
+void PPU::Clock(Bus& bus)
 {
     if(0 <= Scanline && Scanline <= 239) //visible scanlines
     {

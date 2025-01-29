@@ -7,6 +7,7 @@
 
 #include "../src/cleanup.h"
 #include "../src/6502.h"
+#include "../src/apu.h"
 #include "../src/ppu.h"
 #include "../src/bus.h"
 #include "../src/GUI.h"
@@ -60,9 +61,19 @@ int main(int argc, char** args)
         return 1;
     }
 
+    APU apu;
     Bus bus;
     CPU cpu;
     PPU ppu;
+
+    SDL_AudioSpec AudioSettings = {0};
+
+    AudioSettings.freq      = apu.SamplingRate;       //sampling frequency
+    AudioSettings.format    = AUDIO_S16;   //16-bit sample
+    AudioSettings.channels  = apu.Channels;           //nr of channels for our audio device. 1 = mono, 2 = stereo, etc
+    AudioSettings.callback  = NULL;        //no callback. we'll use a queue
+
+    SDL_OpenAudio(&AudioSettings, 0);
 
     //GAMES
     // std::string ROM = "../data/roms/1942.nes";
@@ -84,12 +95,13 @@ int main(int argc, char** args)
 
     bus.LoadCartridge(ROM);
 
-    std::vector<uint8_t> FramebufferPatternTables = ppu.PushPatternTablesToGUI(bus);
+    std::vector<std::uint8_t> FramebufferPatternTables = ppu.PushPatternTablesToGUI(bus);
 
-    // uint32_t CPUClockCounter = cpu.Reset(bus, ppu);
-    uint32_t PPUCycles = 0;
-    uint32_t CPUCycles = 0;
-    uint32_t NCyclesPPUWarmUp = 29658;
+    // std::uint32_t CPUClockCounter = cpu.Reset(bus, ppu);
+    std::uint32_t PPUCycles = 0;
+    std::uint32_t CPUCycles = 0;
+    std::uint32_t APUCycles = 0;
+    std::uint32_t NCyclesPPUWarmUp = 29658;
 
     CPUCycles = cpu.Reset(bus, ppu);
 
@@ -124,7 +136,8 @@ int main(int argc, char** args)
 
         while (!ppu.FrameComplete)
         {
-            if(ppu.OAMDMA != 0)
+            //executing CPU. Note not strictly a clock, because it will run for a set number of cycles to complete one instruction
+            if(ppu.OAMDMA)
             {
                 switch( bus.DMACycles % 2 )
                 {
@@ -163,11 +176,18 @@ int main(int argc, char** args)
                     cpu.Execute(CPUCycles, bus, ppu);
                 }
             }
+            //clocking PPU
             while (PPUCycles <= (3*CPUCycles))
             {
-                ppu.Execute(bus);
+                ppu.Clock(bus);
                 PPUCycles++;
                 bus.UpdateMMIO(ppu);
+            }
+            //clocking APU
+            while (APUCycles <= (0.5*CPUCycles))
+            {
+                apu.Clock(bus);
+                APUCycles++;
             }
         }
 
