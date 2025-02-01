@@ -1,6 +1,13 @@
 #include <SDL2/SDL.h>
 #include "../src/bus.h"
 
+void Bus::ConnectAPU(APU& apu)
+{
+    //https://www.programiz.com/cpp-programming/structure-pointer
+
+    apu_ptr = &apu; //hopefully creating a pointer to the APU struct to reference elsewhere without continually passing it around
+}
+
 void Bus::LoadCartridge(std::string Cartridge)
 {
     std::ifstream stream(Cartridge, std::ios::in | std::ios::binary);
@@ -146,6 +153,7 @@ void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
         else if( ( (0x4000 <= Addr) && (Addr <= 0x4013) ) || (Addr == 0x4015) || (Addr == 0x4017) ) //APU registers
         {
             CPUMemory[Addr] = Value;
+            WriteAPUBus(Value, Addr);
         }
         else if( (0x8000 <= Addr) && (Addr <= 0xFFFF)  ) //mapper select
         {
@@ -358,6 +366,110 @@ std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
         }break;
     }
     return Value;
+}
+
+void Bus::WriteAPUBus(std::uint8_t Value, std::uint16_t Addr)
+{
+    if(Addr == 0x4000)
+    {
+        apu_ptr->Pulse1_Duty              = (Value & 0b11000000) >> 6;
+        apu_ptr->Pulse1_LengthCounterHalt = (Value & 0b00100000) >> 5;
+        apu_ptr->Pulse1_ConstVolumeFlag   = (Value & 0b00010000) >> 4;
+        apu_ptr->Pulse1_Vol_EnvPeriod     = (Value & 0b00001111);
+    }
+    else if(Addr == 0x4001)
+    {
+        apu_ptr->Pulse1_SweepEnabled      = (Value & 0b10000000) >> 7;
+        apu_ptr->Pulse1_SweepPeriod       = (Value & 0b01110000) >> 4;
+        apu_ptr->Pulse1_SweepNegative     = (Value & 0b00001000) >> 3;
+        apu_ptr->Pulse1_SweepShiftCount   = (Value & 0b00000111);
+        apu_ptr->Pulse1_SweepReloadFlag   = 1; //setting sweep reload flag
+    }
+    else if(Addr == 0x4002)
+    {
+        apu_ptr->Pulse1_TimerTemp = Value;
+    }
+    else if(Addr == 0x4003)
+    {
+        apu_ptr->Pulse1_TimerLoad         = ( (Value & 0b00000111) << 8 ) | apu_ptr->Pulse1_TimerTemp;
+        apu_ptr->Pulse1_LengthCounterLoad =   (Value & 0b11111000) >> 3;
+        apu_ptr->Pulse1_Sequencer     = 0;  //restart sequence
+        apu_ptr->Pulse1_Envelope      = 15; //restart envelope
+        apu_ptr->Pulse1_StartFlag     = 1;  //set start flag
+        apu_ptr->Pulse1_LengthCounter = apu_ptr->LengthCounterLUT_Linear[apu_ptr->Pulse1_LengthCounterLoad];
+    }
+    else if(Addr == 0x4004)
+    {
+        apu_ptr->Pulse2_Duty              = (Value & 0b11000000) >> 6;
+        apu_ptr->Pulse2_LengthCounterHalt = (Value & 0b00100000) >> 5;
+        apu_ptr->Pulse2_ConstVolumeFlag   = (Value & 0b00010000) >> 4;
+        apu_ptr->Pulse2_Vol_EnvPeriod     = (Value & 0b00001111);
+    }
+    else if(Addr == 0x4005)
+    {
+        apu_ptr->Pulse2_SweepEnabled      = (Value & 0b10000000) >> 7;
+        apu_ptr->Pulse2_SweepPeriod       = (Value & 0b01110000) >> 4;
+        apu_ptr->Pulse2_SweepNegative     = (Value & 0b00001000) >> 3;
+        apu_ptr->Pulse2_SweepShiftCount   = (Value & 0b00000111);
+    }
+    else if(Addr == 0x4006)
+    {
+        apu_ptr->Pulse2_TimerTemp = Value; //todo see if we need to use this temporary variable...
+    }
+    else if(Addr == 0x4007)
+    {
+        apu_ptr->Pulse2_TimerLoad         = ( (Value & 0b00000111) << 8 ) | apu_ptr->Pulse2_TimerTemp;
+        apu_ptr->Pulse2_LengthCounterLoad =   (Value & 0b11111000) >> 3;
+        apu_ptr->Pulse2_Sequencer     = 0;  //restart sequence
+        apu_ptr->Pulse2_Envelope      = 15; //restart envelope
+        apu_ptr->Pulse2_StartFlag     = 1;  //set start flag
+        apu_ptr->Pulse2_LengthCounter = apu_ptr->LengthCounterLUT_Linear[apu_ptr->Pulse2_LengthCounterLoad];
+    }
+    else if(Addr == 0x4008)
+    {
+        apu_ptr->Triangle_ControlFlag      = (Value & 0b10000000) >> 7;
+        apu_ptr->Triangle_CounterReloadVal = (Value & 0b01111111);
+        // printf("Triangle_CounterReloadVal: 0b%08b\n",apu_ptr->Triangle_CounterReloadVal);
+    }
+    else if(Addr == 0x400A)
+    {
+        apu_ptr->Triangle_TimerTemp = Value;
+    }
+    else if(Addr == 0x400B)
+    {
+        apu_ptr->Triangle_LengthCounterLoad =   (Value & 0b11111000) >> 3;
+        apu_ptr->Triangle_TimerLoad         = ( (Value & 0b00000111) << 8 ) | apu_ptr->Triangle_TimerTemp;
+        apu_ptr->Triangle_LinearCounterReload = 1; //set the linear counter reload flag
+        apu_ptr->Triangle_LengthCounter       = apu_ptr->LengthCounterLUT_Linear[apu_ptr->Triangle_LengthCounterLoad]; //todo is this correct? cannot see another way of setting the length counter otherwise...
+    }
+    else if(Addr == 0x4015)
+    {
+        apu_ptr->DMCEnable                    = (Value & 0b00010000) >> 4;
+        apu_ptr->LengthCounterEnable_Noise    = (Value & 0b00001000) >> 3;
+        apu_ptr->LengthCounterEnable_Triangle = (Value & 0b00000100) >> 2;
+        apu_ptr->LengthCounterEnable_Pulse2   = (Value & 0b00000010) >> 1;
+        apu_ptr->LengthCounterEnable_Pulse1   = (Value & 0b00000001);
+    }
+    else if(Addr == 0x4017)
+    {
+        apu_ptr->FrameCounter5Step     = (Value & 0b10000000) >> 7;
+        apu_ptr->DisableFrameInterrupt = (Value & 0b01000000) >> 6;
+    }
+}
+
+std::uint8_t Bus::ReadAPUBus(std::uint16_t Addr)
+{
+    if(Addr == 0x4015)
+    {
+        CPUMemory[0x4015] |= (apu_ptr->DMCInterrupt           << 7);
+        CPUMemory[0x4015] |= (apu_ptr->FrameInterrupt         << 6);
+        CPUMemory[0x4015] |= (apu_ptr->DMCActive              << 4);
+        CPUMemory[0x4015] |= (apu_ptr->LengthCounter_Noise    << 3);
+        CPUMemory[0x4015] |= (apu_ptr->LengthCounter_Triangle << 2);
+        CPUMemory[0x4015] |= (apu_ptr->LengthCounter_Pulse2   << 1);
+        CPUMemory[0x4015] |= (apu_ptr->LengthCounter_Pulse1);
+    }
+    return CPUMemory[0x4015];
 }
 
 void Bus::MirrorPPUAddr(std::uint16_t& Addr)

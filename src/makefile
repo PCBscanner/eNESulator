@@ -8,7 +8,7 @@ LIBS = -lSDL2 -lSDL2_ttf
 CFLAGS = -std=c++17
 
 #object files that we wish to output
-objects = apu.o bus.o main.o ppu.o
+objects = apu.o bus.o main.o ppu.o pulse.o
 
 rebuildables = $(objects) $(LinkTarget)
 

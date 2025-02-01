@@ -2,10 +2,16 @@
 #include <cstdint>
 #include <fstream>
 #include <vector>
+#include "../src/apu.h"
 #include "../src/ppu.h"
+
+struct APU; //forward declaring the apu struct
 
 struct Bus
 {
+
+    APU* apu_ptr;
+
     bool AddressMirroring = true;
 
     std::uint16_t DMACycles         = 0;
@@ -39,6 +45,8 @@ struct Bus
     const std::uint8_t CONTROLLER_LEFT    = 0b01000000;
     const std::uint8_t CONTROLLER_RIGHT   = 0b10000000;
 
+    void ConnectAPU(APU&);
+
     void LoadCartridge(std::string);
 
     void SelectBank(std::uint8_t);
@@ -50,6 +58,10 @@ struct Bus
     void WritePPUBus(std::uint8_t, std::uint16_t, PPU&);
 
     std::uint8_t ReadPPUBus(std::uint16_t, PPU&);
+
+    void WriteAPUBus(std::uint8_t, std::uint16_t);
+
+    std::uint8_t ReadAPUBus(std::uint16_t);
 
     void IncrementPPUADDR(PPU&);
 
