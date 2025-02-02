@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../src/bus.h"
-#include "../src/pulse.h"
 
 struct Bus; //forward declaring the bus
 
@@ -69,16 +68,18 @@ struct APU
     std::uint8_t  Pulse2_EnvelopeDivider = 0;
     std::uint8_t  Pulse2_DecayLvlCounter = 0;
     std::uint8_t  Pulse2_LengthCounter   = 0;
+    std::uint8_t  Pulse2_SweepDivider    = 0;
+    std::uint8_t  Pulse2_SweepReloadFlag = 0;
 
     //TRIANGLE CHANNEL https://www.nesdev.org/wiki/APU_Triangle
     //registers
     //$4008
-    std::uint8_t  Triangle_ControlFlag      = 0;
-    std::uint8_t  Triangle_CounterReloadVal = 0;
+    std::uint8_t  Triangle_LengthCounterHalt   = 0;
+    std::uint8_t  Triangle_CounterReloadVal    = 0;
     //$400A & $400B
-    std::uint16_t Triangle_TimerTemp         = 0;
-    std::uint16_t Triangle_TimerLoad         = 0;
-    std::uint8_t  Triangle_LengthCounterLoad = 0;
+    std::uint16_t Triangle_TimerTemp           = 0;
+    std::uint16_t Triangle_TimerLoad           = 0;
+    std::uint8_t  Triangle_LengthCounterLoad   = 0;
     //additional variables to control & track triangle
     std::uint8_t  Triangle_LinearCounterReload = 0;
     std::uint8_t  Triangle_Sequencer           = 0;
@@ -86,21 +87,54 @@ struct APU
     std::uint8_t  Triangle_LengthCounter       = 0;
     std::uint8_t  Triangle_LinearCounter       = 0;
 
+    //NOISE CHANNEL https://www.nesdev.org/wiki/APU_Noise
+    //$400C
+    std::uint8_t  Noise_LengthCounterHalt = 0;
+    std::uint8_t  Noise_ConstVolumeFlag   = 0;
+    std::uint8_t  Noise_Vol_EnvPeriod     = 0;
+    //$400E
+    std::uint8_t  Noise_ModeFlag          = 0;
+    std::uint8_t  Noise_Period            = 0;
+    //$400F
+    std::uint8_t  Noise_LengthCounterLoad = 0;
+    //additional variables to control & track noise
+    std::uint16_t Noise_ShiftRegister     = 1; //On power-up, the shift register is loaded with the value 1.
+    std::uint8_t  Noise_Envelope          = 0;
+    std::uint16_t Noise_Timer             = 0;
+    std::uint8_t  Noise_StartFlag         = 0;
+    std::uint8_t  Noise_EnvelopeDivider   = 0;
+    std::uint8_t  Noise_DecayLvlCounter   = 0;
+    std::uint8_t  Noise_LengthCounter     = 0;
+
+    //DMC CHANNEL https://www.nesdev.org/wiki/APU_DMC
+    //$4010
+    std::uint8_t  DMC_IRQEnabledFlag = 0;
+    std::uint8_t  DMC_LoopFlag       = 0;
+    std::uint8_t  DMC_RateIndex      = 0;
+    //$4011
+    std::uint8_t  DMC_DirectLoad     = 0;
+    //$4012
+    std::uint8_t  DMC_SampleAddress  = 0;
+    //$4013
+    std::uint8_t  DMC_SampleLength   = 0;
+    //additional variables to control & track DMC
+    std::uint8_t  DMC_IRQFlag        = 0;
+    std::uint8_t  DMC_SampleBuffer   = 0;
+    std::uint16_t DMC_Timer          = 0;
+    std::uint8_t  DMC_OutputLevel    = 0;
+    std::uint8_t  DMC_Counter        = 0;
+
     //control $4015 write
-    std::uint8_t DMCEnable                    = 0;
-    std::uint8_t LengthCounterEnable_Noise    = 0;
-    std::uint8_t LengthCounterEnable_Triangle = 0;
-    std::uint8_t LengthCounterEnable_Pulse2   = 0;
-    std::uint8_t LengthCounterEnable_Pulse1   = 0;
+    std::uint8_t DMC_Enable                   = 0;
+    std::uint8_t Noise_LengthCounterEnable    = 0;
+    std::uint8_t Triangle_LengthCounterEnable = 0;
+    std::uint8_t Pulse2_LengthCounterEnable   = 0;
+    std::uint8_t Pulse1_LengthCounterEnable   = 0;
 
     //status $4015 read
     std::uint8_t DMCInterrupt           = 0;
     std::uint8_t FrameInterrupt         = 0;
     std::uint8_t DMCActive              = 0;
-    std::uint8_t LengthCounter_Noise    = 0;
-    std::uint8_t LengthCounter_Triangle = 0;
-    std::uint8_t LengthCounter_Pulse2   = 0;
-    std::uint8_t LengthCounter_Pulse1   = 0;
 
     //mixer parameters
     std::uint16_t Pulse1_Output   =  0;
@@ -140,13 +174,16 @@ struct APU
     std::uint16_t ClockPulse1();
     std::uint16_t ClockPulse2();
     std::uint16_t ClockTriangle();
+    std::uint16_t ClockNoise();
 
     void ClockEnvelope_Pulse1();
     void ClockEnvelope_Pulse2();
+    void ClockEnvelope_Noise();
 
     void ClockEnvelopes();
 
     std::uint16_t Sweep_Pulse1();
+    std::uint16_t Sweep_Pulse2();
 
     void ClockSweepUnits();
 
@@ -159,10 +196,11 @@ struct APU
     void Clock(Bus&);
 
     //pulse sequencer LUT
-    std::uint8_t PulseSeqLUT[4][8] = { {0,0,0,0,0,0,0,1}, {0,0,0,0,0,0,1,1}, {0,0,0,0,1,1,1,1}, {1,1,1,1,1,1,0,0} };
-    std::uint8_t TriangleSeqLUT[32] = {15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+    std::uint8_t  PulseSeqLUT[4][8]  = { {0,0,0,0,0,0,0,1}, {0,0,0,0,0,0,1,1}, {0,0,0,0,1,1,1,1}, {1,1,1,1,1,1,0,0} };
+    std::uint8_t  TriangleSeqLUT[32] = {15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+    std::uint16_t NoisePeriodLUT[16] = {4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068};
 
-    std::uint8_t LengthCounterLUT_Linear[32] = {10,254,20, 2,40, 4,80, 6,160, 8,60,10,14,12,26,14,
+    std::uint8_t LengthCounterLUT[32] = {10,254,20, 2,40, 4,80, 6,160, 8,60,10,14,12,26,14,
                                                 12, 16,24,18,48,20,96,22,192,24,72,26,16,28,32,30};
     
 };

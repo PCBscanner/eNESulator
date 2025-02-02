@@ -1,5 +1,27 @@
-Reset vector points to 0xc79e.
-Instruction is 0x78 = SEI
-0xc79f = 0xd8 = CLD
-0xc7a0 = 0xa9 = LDA, ABS. ADDR = whatever is stored at 0xc7a1 & 0xc7a2
-0xc7a2 = 0x8d = STA, ABS. ADDR = whatever is stored at 0xc7a3 & 0xc7a4
+Here is my current approach for generating audio:
+
+1. Generate one sample every APU clock.
+2. Push this sample into a ring buffer and use an FIR filter to create an output (incrementing the position in the ring buffer as required).
+3. Increment a (float) APU clock counter.
+4. Repeat steps 1-3 until the APU clock counter exceeds 37.3 (0.895 kHz APU freq / 48 kHz sampling freq).
+5. Put this value into a sound buffer for SDL to eventually queue.
+6. Increment an (int) sample counter.
+6. (New APU clock counter value) = (current APU clock counter value) - (37.3).
+    My thinking with this is that the sample-to-sample variance should even out in the long run due to not just binning off the remainders if I was to use integers.
+7. Repeat steps 1-6 until I fill up the buffer with 800 samples (nr. samples per frame at 48 kHz sampling freq).
+8. Send this buffer to the queue with SDL_QueueAudio.
+9. Reset the sample counter to 0.
+
+And here is my current approach for capping framerate:
+
+if( ( t2 - t1 ) < Frametime )
+{
+    SDL_Delay( Frametime - (t2 - t1) );
+}
+
+t1 and t2 are set with SDL_GetTicks() immediately after the frame has been rendered, and when the frame is ready to be rendered, respectively.
+Frametime is set to 16.67 ms (~ 60 fps).
+
+This works well enough, but I was curious to see if I could swap capping the video framerate with waiting for the audio buffer to finish processing before generating the next frame.
+
+I confirmed my emulation would run faster than 60 fps uncapped. It's

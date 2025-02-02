@@ -12,6 +12,175 @@
 #include "../src/bus.h"
 #include "../src/GUI.h"
 
+struct FIRFilter
+{
+    static const std::uint16_t FilterLength = 120;
+    float Buffer[FilterLength] = {0};
+    std::uint16_t BufferIndex = 0;
+    float Output = 0;
+
+    //http://t-filter.engineerjs.com/
+    static constexpr float FIRImpulseResponse[FilterLength] = {
+        0.000019221241265146985,
+        -0.00011693312320218828,
+        -0.00005145857598133435,
+        0.00008581389247283942,
+        -0.00012780301900775913,
+        0.00010668051341248389,
+        -0.000008622727505666933,
+        -0.00014028199222028285,
+        0.0002685338232764779,
+        -0.0002890473752543451,
+        0.00014754457642863944,
+        0.0001334110847936313,
+        -0.00044126984894593514,
+        0.0006095914860387138,
+        -0.0004971931160782956,
+        0.00007621217304807374,
+        0.0005184131163431792,
+        -0.001016179206714934,
+        0.0011211539754743315,
+        -0.0006662806500969817,
+        -0.0002619526215376982,
+        0.0013037060562800817,
+        -0.001946857468262416,
+        0.001758397683263153,
+        -0.0006298476311485767,
+        -0.0010894932717156326,
+        0.002666628896147836,
+        -0.0032733721006291735,
+        0.0023868140851515977,
+        -0.00012046829336579358,
+        -0.002697027834370035,
+        0.004787202334285269,
+        -0.0049665175529753905,
+        0.0027530718998398465,
+        0.0012548494659758206,
+        -0.005459767344046894,
+        0.00785257325051926,
+        -0.0069131311342361754,
+        0.0024426666581136907,
+        0.004087987482699095,
+        -0.009930050039884208,
+        0.012133969863481234,
+        -0.00892158194730952,
+        0.0007562479354365467,
+        0.00944558165086633,
+        -0.017212383024394325,
+        0.01830710582698195,
+        -0.010748182318473543,
+        -0.003809417670638022,
+        0.020059787670011972,
+        -0.0306426420748565,
+        0.02894452747150321,
+        -0.01214219453278461,
+        -0.016683406564116043,
+        0.04825691585523149,
+        -0.06879210872427258,
+        0.06265533931604236,
+        -0.012897348533810412,
+        -0.11374662843723274,
+        0.6011765454616573,
+        0.6011765454616573,
+        -0.11374662843723274,
+        -0.012897348533810412,
+        0.06265533931604236,
+        -0.06879210872427258,
+        0.04825691585523149,
+        -0.016683406564116043,
+        -0.01214219453278461,
+        0.02894452747150321,
+        -0.0306426420748565,
+        0.020059787670011972,
+        -0.003809417670638022,
+        -0.010748182318473543,
+        0.01830710582698195,
+        -0.017212383024394325,
+        0.00944558165086633,
+        0.0007562479354365467,
+        -0.00892158194730952,
+        0.012133969863481234,
+        -0.009930050039884208,
+        0.004087987482699095,
+        0.0024426666581136907,
+        -0.0069131311342361754,
+        0.00785257325051926,
+        -0.005459767344046894,
+        0.0012548494659758206,
+        0.0027530718998398465,
+        -0.0049665175529753905,
+        0.004787202334285269,
+        -0.002697027834370035,
+        -0.00012046829336579358,
+        0.0023868140851515977,
+        -0.0032733721006291735,
+        0.002666628896147836,
+        -0.0010894932717156326,
+        -0.0006298476311485767,
+        0.001758397683263153,
+        -0.001946857468262416,
+        0.0013037060562800817,
+        -0.0002619526215376982,
+        -0.0006662806500969817,
+        0.0011211539754743315,
+        -0.001016179206714934,
+        0.0005184131163431792,
+        0.00007621217304807374,
+        -0.0004971931160782956,
+        0.0006095914860387138,
+        -0.00044126984894593514,
+        0.0001334110847936313,
+        0.00014754457642863944,
+        -0.0002890473752543451,
+        0.0002685338232764779,
+        -0.00014028199222028285,
+        -0.000008622727505666933,
+        0.00010668051341248389,
+        -0.00012780301900775913,
+        0.00008581389247283942,
+        -0.00005145857598133435,
+        -0.00011693312320218828,
+        0.000019221241265146985
+    };
+
+    float Update(float Input)
+    {
+        //store latest sample into the buffer
+        Buffer[BufferIndex] = Input;
+        //increment buffer and wrap around if necessary
+        if(BufferIndex == FilterLength-1)
+        {
+            //wrap around back to 0
+            BufferIndex = 0;
+        }
+        else
+        {
+            //increment as normal
+            BufferIndex++;
+        }
+        //reset output to 0 before calculating new output
+        Output = 0;
+
+        std::uint8_t SumIndex = BufferIndex;
+
+        for(std::uint8_t n = 0; n<FilterLength; n++)
+        {
+            //decrement index and wrap if necessary
+            if(SumIndex > 0)
+            {
+                SumIndex--;
+            }
+            else
+            {
+                SumIndex = FilterLength - 1;
+            }
+            //multiply impulse response with shifted input sample, and add to the output
+            Output += FIRImpulseResponse[n] * Buffer[SumIndex];
+        }
+        return Output;
+    }
+};
+
 int main(int argc, char** args)
 {
 
@@ -65,6 +234,7 @@ int main(int argc, char** args)
     Bus bus;
     CPU cpu;
     PPU ppu;
+    FIRFilter filter;
 
     //audio settings
     SDL_AudioSpec AudioSettings        = {0};
@@ -80,9 +250,9 @@ int main(int argc, char** args)
     std::uint32_t NBytesBuffer   = NSamplesBuffer * BytesPerSample;
 
     //malloc returns void*: The malloc function allocates memory and returns a generic pointer of type void*.
-    void* SoundBuffer = malloc(NBytesBuffer); //pointer to the memory addr where SoundBuffer shall be stored
-    float* SampleOut = (float*)SoundBuffer; //we must then cast a type to it
-    float  SampleFilter = 0;
+    void*  SoundBuffer  = malloc(NBytesBuffer); //pointer to the memory addr where SoundBuffer shall be stored
+    float* SampleOut    = (float*)SoundBuffer; //we must then cast a type to it
+    float  FilterOutput = 0;
 
     SDL_OpenAudio(&AudioSettings, &AudioSettings_Actual);
     SDL_PauseAudio(0); //must un-pause audio first
@@ -106,6 +276,8 @@ int main(int argc, char** args)
     // std::string ROM = "../data/test_roms/vram_access.nes";
 
     //AUDIO UTILITIES
+    // std::string ROM = "../data/test_roms/noise.nes";
+    // std::string ROM = "../data/test_roms/square.nes";
     // std::string ROM = "../data/test_roms/triangle.nes";
 
 
@@ -118,10 +290,10 @@ int main(int argc, char** args)
     std::uint32_t PPUCycles = 0;
     std::uint32_t CPUCycles = 0;
     std::uint32_t APUCycles = 0;
-    std::uint8_t  AudioSampleTimer    = 0;
-    std::uint32_t AudioSampleTimermax = (0.5* 1789773/AudioSettings.freq) + 1; //nr of APU frames between each sample. roughly 44.1 kHz
-    std::uint16_t AudioSampleCounter  = 0;
-    std::uint32_t NCyclesPPUWarmUp    = 29658;
+    float APUFramesSinceLastSample   = 0;
+    float NrAPUCyclesPerSample       = (0.5* 1789773/AudioSettings.freq); //nr of APU frames between each sample. roughly 44.1 kHz
+    std::uint16_t AudioSampleCounter = 0;
+    std::uint32_t NCyclesPPUWarmUp   = 29658;
 
     CPUCycles = cpu.Reset(bus, ppu);
 
@@ -137,7 +309,7 @@ int main(int argc, char** args)
 
     //used to cap framerate
     std::uint32_t NFrames = 0;
-    float Frametime = 16.67*1;
+    float Frametime = 16.67;
     std::uint32_t  t1     = SDL_GetTicks();
     std::uint32_t  t2     = SDL_GetTicks();
 
@@ -205,24 +377,27 @@ int main(int argc, char** args)
             {
                 apu.Clock(bus);
                 APUCycles++;
-                AudioSampleTimer++;
-                SampleFilter+=apu.Mixer();
+                FilterOutput = filter.Update(apu.Mixer()); //updating the filter every sample
+                APUFramesSinceLastSample += 1.0f;
             }
             //sampling audio
-            if(AudioSampleTimer >= AudioSampleTimermax)
+            if(APUFramesSinceLastSample >= NrAPUCyclesPerSample)
             {
-                SampleOut[(2*AudioSampleCounter) + 0] = SampleFilter/AudioSampleTimer; //left channel
-                SampleOut[(2*AudioSampleCounter) + 1] = SampleFilter/AudioSampleTimer; //right channel
-                // SampleOut[(2*AudioSampleCounter) + 0] = apu.Mixer(); //left channel
-                // SampleOut[(2*AudioSampleCounter) + 1] = apu.Mixer(); //right channel
+                //note that by this stage, we have already downsampled with the filter
+                SampleOut[(2*AudioSampleCounter) + 0] = FilterOutput; //left channel
+                SampleOut[(2*AudioSampleCounter) + 1] = FilterOutput; //right channel
+                // *SampleOut++ = FilterOutput; //left channel
+                // *SampleOut++ = FilterOutput; //right channel
                 AudioSampleCounter++;
-                if(AudioSampleCounter == (NSamplesBuffer - 1))
+                if(AudioSampleCounter == NSamplesBuffer) //checking if the buffer is full
                 {
-                    SDL_QueueAudio(1, SoundBuffer, NBytesBuffer); //send buffer to audio queue
+                    // printf("AudioSampleCounter: %03d\n", AudioSampleCounter);
+                    // while(SDL_GetQueuedAudioSize(1)){printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1));}
+                    SDL_QueueAudio(1, SoundBuffer, NBytesBuffer); //send full buffer to audio queue
                     AudioSampleCounter = 0; //reset counter
+                    // printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1)/BytesPerSample);
                 }
-                SampleFilter     = 0;
-                AudioSampleTimer = 0; //resetting the timer
+                APUFramesSinceLastSample -= NrAPUCyclesPerSample; //resetting the timer
             }
         }
 
@@ -235,7 +410,8 @@ int main(int argc, char** args)
         SDL_SetRenderDrawColor( Renderer, 0x0, 0x00, 0x00, 0x00 ); //setting a background colour
 
         t2 = SDL_GetTicks();
-
+        // printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1)/BytesPerSample);
+        // while(SDL_GetQueuedAudioSize(1)){}
         //capping framerate to 60 fps.
         if( ( t2 - t1 ) < Frametime )
         {

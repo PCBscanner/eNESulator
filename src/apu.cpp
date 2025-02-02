@@ -2,7 +2,6 @@
 
 APU::APU()
 {
-    Pulse pulse1; //initializing a Pulse struct for pulse1
     PopulateMixerLUTs();
 }
 
@@ -30,10 +29,10 @@ void APU::UpdateAPURegs_ToCPU(Bus& bus)
     bus.CPUMemory[0x4015] |= (DMCInterrupt           << 7);
     bus.CPUMemory[0x4015] |= (FrameInterrupt         << 6);
     bus.CPUMemory[0x4015] |= (DMCActive              << 4);
-    bus.CPUMemory[0x4015] |= (LengthCounter_Noise    << 3);
-    bus.CPUMemory[0x4015] |= (LengthCounter_Triangle << 2);
-    bus.CPUMemory[0x4015] |= (LengthCounter_Pulse2   << 1);
-    bus.CPUMemory[0x4015] |= (LengthCounter_Pulse1);
+    bus.CPUMemory[0x4015] |= (Noise_LengthCounter    << 3);
+    bus.CPUMemory[0x4015] |= (Triangle_LengthCounter << 2);
+    bus.CPUMemory[0x4015] |= (Pulse2_LengthCounter   << 1);
+    bus.CPUMemory[0x4015] |= (Pulse1_LengthCounter);
 }
 
 float APU::Mixer() //https://www.nesdev.org/wiki/APU_Mixer
@@ -43,10 +42,6 @@ float APU::Mixer() //https://www.nesdev.org/wiki/APU_Mixer
 
 std::uint16_t APU::ClockPulse1()
 {
-    if( (Pulse1_LengthCounter == 0) || (Pulse1_TimerLoad < 8) )
-    {
-        return 0;
-    }
     if(Pulse1_Timer == 0)
     {
         Pulse1_Timer = Pulse1_TimerLoad; //reset to the timer value
@@ -63,16 +58,18 @@ std::uint16_t APU::ClockPulse1()
     {
         Pulse1_Timer--; //decrement normally
     }
-
-    return (Pulse1_ConstVolumeFlag ? Pulse1_Vol_EnvPeriod : Pulse1_DecayLvlCounter) * PulseSeqLUT[Pulse1_Duty][Pulse1_Sequencer];
+    if( (Pulse1_LengthCounter == 0) || (Pulse1_TimerLoad < 8) )
+    {
+        return 0;
+    }
+    else
+    {
+        return (Pulse1_ConstVolumeFlag ? Pulse1_Vol_EnvPeriod : Pulse1_DecayLvlCounter) * PulseSeqLUT[Pulse1_Duty][Pulse1_Sequencer];
+    }
 }
 
 std::uint16_t APU::ClockPulse2()
 {
-    if( (Pulse2_LengthCounter == 0) || (Pulse2_TimerLoad < 8) )
-    {
-        return 0;
-    }
     if(Pulse2_Timer == 0)
     {
         Pulse2_Timer = Pulse2_TimerLoad; //reset to the timer value
@@ -89,16 +86,18 @@ std::uint16_t APU::ClockPulse2()
     {
         Pulse2_Timer--; //decrement normally
     }
-
-    return (Pulse2_ConstVolumeFlag ? Pulse2_Vol_EnvPeriod : Pulse2_DecayLvlCounter) * PulseSeqLUT[Pulse2_Duty][Pulse2_Sequencer];
+    if( (Pulse2_LengthCounter == 0) || (Pulse2_TimerLoad < 8) )
+    {
+        return 0;
+    }
+    else
+    {
+        return (Pulse2_ConstVolumeFlag ? Pulse2_Vol_EnvPeriod : Pulse2_DecayLvlCounter) * PulseSeqLUT[Pulse2_Duty][Pulse2_Sequencer];
+    }
 }
 
 std::uint16_t APU::ClockTriangle()
 {
-    if( (Triangle_LengthCounter == 0) || (Triangle_LinearCounter == 0) ) //do not clock sequencer
-    {
-        return 0;
-    }
     //we only clock the sequencer if the timer is 0
     if(Triangle_Timer == 0)
     {
@@ -116,8 +115,40 @@ std::uint16_t APU::ClockTriangle()
     {
         Triangle_Timer--; //decrement normally
     }
+    if( (Triangle_LengthCounter == 0) || (Triangle_LinearCounter == 0) ) //do not clock sequencer
+    {
+        return 0;
+    }
+    else
+    {
+        return TriangleSeqLUT[Triangle_Sequencer];
+    }
+}
 
-    return TriangleSeqLUT[Triangle_Sequencer];
+std::uint16_t APU::ClockNoise()
+{
+
+    //we only clock the shift register if the timer is 0
+    if(Noise_Timer == 0)
+    {
+        Noise_Timer = NoisePeriodLUT[Noise_Period]; //reset to the timer load value
+        std::uint8_t EORBit = ( Noise_ModeFlag ? ( (Noise_ShiftRegister & 0b1000000) >> 6 ) : ( (Noise_ShiftRegister & 0b10) >> 1 ) );
+        std::uint8_t Feedback = (Noise_ShiftRegister & 0b1) ^ EORBit;
+        Noise_ShiftRegister >>= 1; //the shift register is shifted right by one bit
+        Noise_ShiftRegister |= (Feedback << 14); //bit 14, the leftmost bit, is set to the feedback calculated earlier.
+    }
+    else
+    {
+        Noise_Timer--; //decrement normally
+    }
+    if( (Noise_ShiftRegister & 1) || (!Noise_LengthCounter) )
+    {
+        return 0;
+    }
+    else
+    {
+        return (Noise_ConstVolumeFlag ? Noise_Vol_EnvPeriod : Noise_DecayLvlCounter);
+    }
 }
 
 void APU::ClockEnvelope_Pulse1()
@@ -184,30 +215,85 @@ void APU::ClockEnvelope_Pulse2()
     }
 }
 
+void APU::ClockEnvelope_Noise()
+{
+    if(!Noise_StartFlag) //start flag clear. clock divider.
+    {
+        if(!Noise_EnvelopeDivider) //clocking divider whilst at zero.
+        {
+            Noise_EnvelopeDivider = Noise_Vol_EnvPeriod; //reload with V
+            if(Noise_DecayLvlCounter) //non-zero counter
+            {
+                Noise_DecayLvlCounter--; //only decrement
+            }
+            else
+            {
+                if(Noise_LengthCounterHalt) //Halt length counter (this bit is also the envelope's loop flag)
+                {
+                    Noise_DecayLvlCounter = 15;
+                }
+            }
+        }
+        else
+        {
+            Noise_EnvelopeDivider--;
+        }
+    }
+    else
+    {
+        Noise_StartFlag = 0; //clear start flag
+        Noise_DecayLvlCounter = 15;
+        Noise_EnvelopeDivider = Noise_Vol_EnvPeriod; //divider period reloaded
+    }
+}
+
 void APU::ClockEnvelopes()
 {
     ClockEnvelope_Pulse1();
     ClockEnvelope_Pulse2();
+    ClockEnvelope_Noise();
 }
 
 std::uint16_t APU::Sweep_Pulse1() //https://www.nesdev.org/wiki/APU_Sweep
 {
-    std::uint16_t ChangeAmount = Pulse1_Timer >> Pulse1_SweepShiftCount;
+    std::uint16_t ChangeAmount = Pulse1_TimerLoad >> Pulse1_SweepShiftCount;
     std::uint16_t TargetPeriod = 0;
     if(Pulse1_SweepNegative) //if negative flag set
     {
-        if(ChangeAmount > Pulse1_Timer)
+        if(ChangeAmount > Pulse1_TimerLoad)
         {
             TargetPeriod = 0;
         }
         else
         {
-            TargetPeriod = Pulse1_Timer - ChangeAmount;
+            TargetPeriod = Pulse1_TimerLoad - ChangeAmount;
         }
     }
     else
     {
-        TargetPeriod = Pulse1_Timer + ChangeAmount;
+        TargetPeriod = Pulse1_TimerLoad + ChangeAmount;
+    }
+    return TargetPeriod;
+}
+
+std::uint16_t APU::Sweep_Pulse2() //https://www.nesdev.org/wiki/APU_Sweep
+{
+    std::uint16_t ChangeAmount = Pulse2_TimerLoad >> Pulse2_SweepShiftCount;
+    std::uint16_t TargetPeriod = 0;
+    if(Pulse2_SweepNegative) //if negative flag set
+    {
+        if(ChangeAmount > Pulse2_TimerLoad)
+        {
+            TargetPeriod = 0;
+        }
+        else
+        {
+            TargetPeriod = Pulse2_TimerLoad - ChangeAmount;
+        }
+    }
+    else
+    {
+        TargetPeriod = Pulse2_TimerLoad + ChangeAmount;
     }
     return TargetPeriod;
 }
@@ -216,15 +302,15 @@ void APU::ClockSweepUnits() //https://www.nesdev.org/wiki/APU_Sweep
 {
     std::uint16_t Pulse1_TargetPeriod = Sweep_Pulse1();
 
+    bool Pulse1_SweepMute = ( ( ( Pulse1_Timer < 8 ) || ( Pulse1_TargetPeriod > 0x7FF ) ) ? true : false );
+
     if( (!Pulse1_SweepDivider) && (Pulse1_SweepEnabled)  && (Pulse1_SweepShiftCount) )
     {
-        if(1) //todo sweep unit is NOT muting the channel
+        // printf("Here1\n");
+        if(!Pulse1_SweepMute) //todo sweep unit is NOT muting the channel
         {
+            // printf("Here2\n");
             Pulse1_TimerLoad = Pulse1_TargetPeriod;
-        }
-        else //todo sweep unit is muting the channel
-        {
-            //continue as normal? "the pulse's period remains unchanged, but the sweep unit's divider continues to count down and reload the divider's period as normal."
         }
     }
     if( (!Pulse1_SweepDivider) || (Pulse1_SweepReloadFlag) )
@@ -236,6 +322,29 @@ void APU::ClockSweepUnits() //https://www.nesdev.org/wiki/APU_Sweep
     {
         Pulse1_SweepDivider--;                       //otherwise, the divider counter is decremented.
     }
+
+    std::uint16_t Pulse2_TargetPeriod = Sweep_Pulse2();
+
+    bool Pulse2_SweepMute = ( ( ( Pulse2_Timer < 8 ) || ( Pulse2_TargetPeriod > 0x7FF ) ) ? true : false );
+
+    if( (!Pulse2_SweepDivider) && (Pulse2_SweepEnabled)  && (Pulse2_SweepShiftCount) )
+    {
+        // printf("Here1\n");
+        if(!Pulse2_SweepMute) //todo sweep unit is NOT muting the channel
+        {
+            // printf("Here2\n");
+            Pulse2_TimerLoad = Pulse2_TargetPeriod;
+        }
+    }
+    if( (!Pulse2_SweepDivider) || (Pulse2_SweepReloadFlag) )
+    {
+        Pulse2_SweepDivider    = Pulse2_SweepPeriod; //divider counter is set to P...
+        Pulse2_SweepReloadFlag = 0;                  //... and the reload flag is cleared
+    }
+    else
+    {
+        Pulse2_SweepDivider--;                       //otherwise, the divider counter is decremented.
+    }
 }
 
 void APU::ClockLinearCounter()
@@ -243,7 +352,6 @@ void APU::ClockLinearCounter()
     if(Triangle_LinearCounterReload)
     {
         Triangle_LinearCounter = Triangle_CounterReloadVal;
-        // printf("Triangle_LinearCounter: 0b%08b\n", Triangle_LinearCounter);
     }
     else
     {
@@ -252,7 +360,7 @@ void APU::ClockLinearCounter()
             Triangle_LinearCounter--;
         }
     }
-    if(!Triangle_ControlFlag) //only clear the linear counter reload flag if the control flag is also clear
+    if(!Triangle_LengthCounterHalt) //only clear the linear counter reload flag if the control flag is also clear
     {
         Triangle_LinearCounterReload = 0;
     }
@@ -260,7 +368,7 @@ void APU::ClockLinearCounter()
 
 void APU::ClockLengthCounter() //https://www.nesdev.org/wiki/APU_Length_Counter
 {
-    if(!LengthCounterEnable_Pulse1) //clearing enabled bit
+    if(!Pulse1_LengthCounterEnable) //enabled bit is cleared...
     {
         Pulse1_LengthCounter = 0;
     }
@@ -268,7 +376,7 @@ void APU::ClockLengthCounter() //https://www.nesdev.org/wiki/APU_Length_Counter
     {
         Pulse1_LengthCounter--;
     }
-    if(!LengthCounterEnable_Pulse2) //clearing enabled bit
+    if(!Pulse2_LengthCounterEnable) //enabled bit is cleared...
     {
         Pulse2_LengthCounter = 0;
     }
@@ -276,13 +384,21 @@ void APU::ClockLengthCounter() //https://www.nesdev.org/wiki/APU_Length_Counter
     {
         Pulse2_LengthCounter--;
     }
-    if(!LengthCounterEnable_Triangle) //clearing enabled bit
+    if(!Triangle_LengthCounterEnable) //enabled bit is cleared...
     {
         Triangle_LengthCounter = 0;
     }
-    if( Triangle_LengthCounter && !Triangle_ControlFlag )
+    if( Triangle_LengthCounter && !Triangle_LengthCounterHalt )
     {
         Triangle_LengthCounter--;
+    }
+    if(!Noise_LengthCounterEnable) //enabled bit is cleared...
+    {
+        Noise_LengthCounter = 0;
+    }
+    if( Noise_LengthCounter && !Noise_LengthCounterHalt )
+    {
+        Noise_LengthCounter--;
     }
 }
 
@@ -387,6 +503,8 @@ void APU::Clock(Bus& bus)
     Pulse2_Output   = ClockPulse2();
     Triangle_Output = ClockTriangle();
     Triangle_Output = ClockTriangle(); //must clock twice per APU cycle. todo find a better way to implement this...
+    Noise_Output    = ClockNoise();
+
 
     ClockFrameCounter();
 
