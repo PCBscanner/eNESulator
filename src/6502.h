@@ -1,5 +1,6 @@
 #pragma once
 #include "../src/bus.h"
+#include "../src/ppu.h"
 
 using Word = std::uint16_t; //16-bit
 

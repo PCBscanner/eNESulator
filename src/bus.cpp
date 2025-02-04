@@ -372,92 +372,96 @@ void Bus::WriteAPUBus(std::uint8_t Value, std::uint16_t Addr)
 {
     if(Addr == 0x4000)
     {
-        apu_ptr->Pulse1_Duty              = (Value & 0b11000000) >> 6;
-        apu_ptr->Pulse1_LengthCounterHalt = (Value & 0b00100000) >> 5;
-        apu_ptr->Pulse1_ConstVolumeFlag   = (Value & 0b00010000) >> 4;
-        apu_ptr->Pulse1_Vol_EnvPeriod     = (Value & 0b00001111);
+        //the duty cycle is changed, but the sequencer's current position isn't affected.
+        apu_ptr->pulse1.Duty                      = (Value & 0b11000000) >> 6;
+        apu_ptr->pulse1.LengthCounterHalt         = (Value & 0b00100000) >> 5;
+        apu_ptr->pulse1.ConstVolFlag              = (Value & 0b00010000) >> 4;
+        apu_ptr->pulse1.Vol_EnvelopeDividerPeriod = (Value & 0b00001111);
     }
     else if(Addr == 0x4001)
     {
-        apu_ptr->Pulse1_SweepEnabled      = (Value & 0b10000000) >> 7;
-        apu_ptr->Pulse1_SweepPeriod       = (Value & 0b01110000) >> 4;
-        apu_ptr->Pulse1_SweepNegative     = (Value & 0b00001000) >> 3;
-        apu_ptr->Pulse1_SweepShiftCount   = (Value & 0b00000111);
-        apu_ptr->Pulse1_SweepReloadFlag   = 1; //setting sweep reload flag
+        apu_ptr->pulse1.SweepEnabled       = (Value & 0b10000000) >> 7;
+        apu_ptr->pulse1.SweepDividerPeriod = (Value & 0b01110000) >> 4;
+        apu_ptr->pulse1.SweepNegateFlag    = (Value & 0b00001000) >> 3;
+        apu_ptr->pulse1.SweepShiftCount    = (Value & 0b00000111);
+        apu_ptr->pulse1.SweepReloadFlag    = 1;
     }
     else if(Addr == 0x4002)
     {
-        apu_ptr->Pulse1_TimerTemp = Value;
+        apu_ptr->pulse1.TimerPeriod = Value;
     }
     else if(Addr == 0x4003)
     {
-        apu_ptr->Pulse1_TimerLoad         = ( (Value & 0b00000111) << 8 ) | apu_ptr->Pulse1_TimerTemp;
-        apu_ptr->Pulse1_LengthCounterLoad =   (Value & 0b11111000) >> 3;
-        apu_ptr->Pulse1_Sequencer     = 0;  //restart sequence
-        apu_ptr->Pulse1_Envelope      = 15; //restart envelope
-        apu_ptr->Pulse1_StartFlag     = 1;  //set start flag
-        apu_ptr->Pulse1_LengthCounter = apu_ptr->LengthCounterLUT[apu_ptr->Pulse1_LengthCounterLoad];
+        apu_ptr->pulse1.TimerPeriod      |= ( (Value & 0b00000111) << 8 );
+        apu_ptr->pulse1.LengthCounterLoad = ( (Value & 0b11111000) >> 3 );
+        //the sequencer is immediately restarted at the first value of the current sequence. The envelope is also restarted. The period divider is not reset
+        apu_ptr->pulse1.Sequencer         = 0; //sequencer is immediately restarted at the first value of the current sequence
+        apu_ptr->pulse1.DecayLvlCounter   = 15; //reload the envelope
+        apu_ptr->pulse1.StartFlag         = 1; //setting the start flag
+        apu_ptr->pulse1.ReloadLengthCounter();
     }
     else if(Addr == 0x4004)
     {
-        apu_ptr->Pulse2_Duty              = (Value & 0b11000000) >> 6;
-        apu_ptr->Pulse2_LengthCounterHalt = (Value & 0b00100000) >> 5;
-        apu_ptr->Pulse2_ConstVolumeFlag   = (Value & 0b00010000) >> 4;
-        apu_ptr->Pulse2_Vol_EnvPeriod     = (Value & 0b00001111);
+        //the duty cycle is changed, but the sequencer's current position isn't affected.
+        apu_ptr->pulse2.Duty                      = (Value & 0b11000000) >> 6;
+        apu_ptr->pulse2.LengthCounterHalt         = (Value & 0b00100000) >> 5;
+        apu_ptr->pulse2.ConstVolFlag              = (Value & 0b00010000) >> 4;
+        apu_ptr->pulse2.Vol_EnvelopeDividerPeriod = (Value & 0b00001111);
     }
     else if(Addr == 0x4005)
     {
-        apu_ptr->Pulse2_SweepEnabled      = (Value & 0b10000000) >> 7;
-        apu_ptr->Pulse2_SweepPeriod       = (Value & 0b01110000) >> 4;
-        apu_ptr->Pulse2_SweepNegative     = (Value & 0b00001000) >> 3;
-        apu_ptr->Pulse2_SweepShiftCount   = (Value & 0b00000111);
-        apu_ptr->Pulse2_SweepReloadFlag   = 1; //setting sweep reload flag
+        apu_ptr->pulse2.SweepEnabled       = (Value & 0b10000000) >> 7;
+        apu_ptr->pulse2.SweepDividerPeriod = (Value & 0b01110000) >> 4;
+        apu_ptr->pulse2.SweepNegateFlag    = (Value & 0b00001000) >> 3;
+        apu_ptr->pulse2.SweepShiftCount    = (Value & 0b00000111);
+        apu_ptr->pulse2.SweepReloadFlag    = 1;
     }
     else if(Addr == 0x4006)
     {
-        apu_ptr->Pulse2_TimerTemp = Value;
+        apu_ptr->pulse2.TimerPeriod = Value;
     }
     else if(Addr == 0x4007)
     {
-        apu_ptr->Pulse2_TimerLoad         = ( (Value & 0b00000111) << 8 ) | apu_ptr->Pulse2_TimerTemp;
-        apu_ptr->Pulse2_LengthCounterLoad =   (Value & 0b11111000) >> 3;
-        apu_ptr->Pulse2_Sequencer     = 0;  //restart sequence
-        apu_ptr->Pulse2_Envelope      = 15; //restart envelope
-        apu_ptr->Pulse2_StartFlag     = 1;  //set start flag
-        apu_ptr->Pulse2_LengthCounter = apu_ptr->LengthCounterLUT[apu_ptr->Pulse2_LengthCounterLoad];
+        apu_ptr->pulse2.TimerPeriod      |= ( (Value & 0b111) << 8 );
+        apu_ptr->pulse2.LengthCounterLoad = ( (Value & 0b11111000) >> 3 );
+        //the sequencer is immediately restarted at the first value of the current sequence. The envelope is also restarted. The period divider is not reset
+        apu_ptr->pulse2.Sequencer         = 0; //sequencer is immediately restarted at the first value of the current sequence
+        apu_ptr->pulse2.DecayLvlCounter   = 15; //reload the envelope
+        apu_ptr->pulse2.StartFlag         = 1; //setting the start flag
+        apu_ptr->pulse2.ReloadLengthCounter();
     }
     else if(Addr == 0x4008)
     {
-        apu_ptr->Triangle_LengthCounterHalt = (Value & 0b10000000) >> 7;
-        apu_ptr->Triangle_CounterReloadVal  = (Value & 0b01111111);
+        apu_ptr->triangle.ControlFlag              = (Value & 0b10000000) >> 7;
+        apu_ptr->triangle.LinearCounterReloadValue = (Value & 0b01111111);
     }
     else if(Addr == 0x400A)
     {
-        apu_ptr->Triangle_TimerTemp = Value;
+        apu_ptr->triangle.TimerPeriod = Value;
     }
     else if(Addr == 0x400B)
     {
-        apu_ptr->Triangle_LengthCounterLoad   =   (Value & 0b11111000) >> 3;
-        apu_ptr->Triangle_TimerLoad           = ( (Value & 0b00000111) << 8 ) | apu_ptr->Triangle_TimerTemp;
-        apu_ptr->Triangle_LinearCounterReload = 1; //set the linear counter reload flag
-        apu_ptr->Triangle_LengthCounter       = apu_ptr->LengthCounterLUT[apu_ptr->Triangle_LengthCounterLoad];
+        apu_ptr->triangle.LengthCounterLoad       =   (Value & 0b11111000) >> 3;
+        apu_ptr->triangle.TimerPeriod             = ( (Value & 0b00000111) << 8 ) | apu_ptr->triangle.TimerPeriod;
+        apu_ptr->triangle.LinearCounterReloadFlag = 1; //set the linear counter reload flag
+        apu_ptr->triangle.ReloadLengthCounter();
     }
     else if(Addr == 0x400C)
     {
-        apu_ptr->Noise_LengthCounterHalt = (Value & 0b00100000) >> 5;
-        apu_ptr->Noise_ConstVolumeFlag   = (Value & 0b00010000) >> 4;
-        apu_ptr->Noise_Vol_EnvPeriod     = (Value & 0b00001111);
+        apu_ptr->noise.LengthCounterHalt         = (Value & 0b00100000) >> 5;
+        apu_ptr->noise.ConstVolFlag              = (Value & 0b00010000) >> 4;
+        apu_ptr->noise.Vol_EnvelopeDividerPeriod = (Value & 0b00001111);
     }
     else if(Addr == 0x400E)
     {
-        apu_ptr->Noise_ModeFlag = (Value & 0b10000000) >> 7;
-        apu_ptr->Noise_Period   = (Value & 0b00001111);
+        apu_ptr->noise.ModeFlag    = (Value & 0b10000000) >> 7;
+        apu_ptr->noise.TimerPeriod = apu_ptr->noise.TimerPeriodLUT[Value & 0b00001111];
     }
     else if(Addr == 0x400F)
     {
-        apu_ptr->Noise_LengthCounterLoad = (Value & 0b11111000) >> 3;
-        apu_ptr->Noise_StartFlag = 1;
-        apu_ptr->Noise_LengthCounter     = apu_ptr->LengthCounterLUT[apu_ptr->Noise_LengthCounterLoad];
+        apu_ptr->noise.LengthCounterLoad = (Value & 0b11111000) >> 3;
+        apu_ptr->noise.StartFlag         = 1;
+        apu_ptr->noise.ReloadLengthCounter();
     }
     else if(Addr == 0x4010)
     {
@@ -468,23 +472,47 @@ void Bus::WriteAPUBus(std::uint8_t Value, std::uint16_t Addr)
     else if(Addr == 0x4011)
     {
         apu_ptr->DMC_DirectLoad  = (Value & 0b01111111);
-        apu_ptr->DMC_OutputLevel = apu_ptr->DMC_DirectLoad;
+        apu_ptr->DMC_OutputLevel =  apu_ptr->DMC_DirectLoad;
     }
     else if(Addr == 0x4012)
     {
-        apu_ptr->DMC_SampleAddress = Value;
+        apu_ptr->DMC_SampleAddr = 0xC000 + (Value << 6);
     }
     else if(Addr == 0x4013)
     {
-        apu_ptr->DMC_SampleLength = Value;
+        apu_ptr->DMC_SampleLength = (Value << 4) + 1;
     }
     else if(Addr == 0x4015)
     {
-        apu_ptr->DMC_Enable                    = (Value & 0b00010000) >> 4;
-        apu_ptr->Noise_LengthCounterEnable    = (Value & 0b00001000) >> 3;
-        apu_ptr->Triangle_LengthCounterEnable = (Value & 0b00000100) >> 2;
-        apu_ptr->Pulse2_LengthCounterEnable   = (Value & 0b00000010) >> 1;
-        apu_ptr->Pulse1_LengthCounterEnable   = (Value & 0b00000001);
+        apu_ptr->DMC_Enable       = (Value & 0b00010000) >> 4;
+        apu_ptr->noise.Enabled    = (Value & 0b00001000) >> 3;
+        apu_ptr->triangle.Enabled = (Value & 0b00000100) >> 2;
+        apu_ptr->pulse2.Enabled   = (Value & 0b00000010) >> 1;
+        apu_ptr->pulse1.Enabled   = (Value & 0b00000001);
+
+        //forcing the length counter to 0 when the enabled bit is cleared
+        if(!apu_ptr->noise.Enabled)
+        {
+            apu_ptr->noise.LengthCounter = 0;
+        }
+        if(!apu_ptr->triangle.Enabled)
+        {
+            apu_ptr->triangle.LengthCounter = 0;
+        }
+        if(!apu_ptr->pulse2.Enabled)
+        {
+            apu_ptr->pulse2.LengthCounter = 0;
+        }
+        if(!apu_ptr->pulse1.Enabled)
+        {
+            apu_ptr->pulse1.LengthCounter = 0;
+        }
+
+        if(!apu_ptr->DMC_Enable)
+        {
+            apu_ptr->DMC_BytesRemaining = 0;
+        }
+        apu_ptr->DMC_InterruptFlag = 0;
     }
     else if(Addr == 0x4017)
     {
@@ -497,13 +525,14 @@ std::uint8_t Bus::ReadAPUBus(std::uint16_t Addr)
 {
     if(Addr == 0x4015)
     {
-        CPUMemory[0x4015] |= (apu_ptr->DMCInterrupt           << 7);
-        CPUMemory[0x4015] |= (apu_ptr->FrameInterrupt         << 6);
-        CPUMemory[0x4015] |= (apu_ptr->DMCActive              << 4);
-        CPUMemory[0x4015] |= (apu_ptr->Noise_LengthCounter    << 3);
-        CPUMemory[0x4015] |= (apu_ptr->Triangle_LengthCounter << 2);
-        CPUMemory[0x4015] |= (apu_ptr->Pulse2_LengthCounter   << 1);
-        CPUMemory[0x4015] |= (apu_ptr->Pulse1_LengthCounter);
+        CPUMemory[0x4015] |=   (apu_ptr->DMC_InterruptFlag               << 7);
+        CPUMemory[0x4015] |=   (apu_ptr->FrameInterrupt                  << 6);
+        CPUMemory[0x4015] |= ( (apu_ptr->DMC_BytesRemaining     ? 1 : 0) << 4);
+        CPUMemory[0x4015] |= ( (apu_ptr->noise.LengthCounter    ? 1 : 0) << 3);
+        CPUMemory[0x4015] |= ( (apu_ptr->triangle.LengthCounter ? 1 : 0) << 2);
+        CPUMemory[0x4015] |= ( (apu_ptr->pulse2.LengthCounter   ? 1 : 0) << 1);
+        CPUMemory[0x4015] |= ( (apu_ptr->pulse1.LengthCounter   ? 1 : 0) << 0);
+        apu_ptr->FrameInterrupt = 0; //clear frame interrupt flag
     }
     return CPUMemory[0x4015];
 }

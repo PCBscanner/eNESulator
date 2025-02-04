@@ -282,6 +282,7 @@ int main(int argc, char** args)
 
 
     bus.ConnectAPU(apu);
+    apu.ConnectBus(bus);
 
     bus.LoadCartridge(ROM);
 
@@ -291,7 +292,7 @@ int main(int argc, char** args)
     std::uint32_t CPUCycles = 0;
     std::uint32_t APUCycles = 0;
     float APUFramesSinceLastSample   = 0;
-    float NrAPUCyclesPerSample       = (0.5* 1789773/AudioSettings.freq); //nr of APU frames between each sample. roughly 44.1 kHz
+    float NrAPUCyclesPerSample       = (0.5* 1789773/AudioSettings.freq); //nr of APU frames between each sample.
     std::uint16_t AudioSampleCounter = 0;
     std::uint32_t NCyclesPPUWarmUp   = 29658;
 
@@ -309,7 +310,7 @@ int main(int argc, char** args)
 
     //used to cap framerate
     std::uint32_t NFrames = 0;
-    float Frametime = 16.67;
+    const float Frametime = 1000/60;
     std::uint32_t  t1     = SDL_GetTicks();
     std::uint32_t  t2     = SDL_GetTicks();
 
@@ -375,7 +376,7 @@ int main(int argc, char** args)
             //clocking APU
             while (APUCycles <= (0.5*CPUCycles))
             {
-                apu.Clock(bus);
+                apu.Clock();
                 APUCycles++;
                 FilterOutput = filter.Update(apu.Mixer()); //updating the filter every sample
                 APUFramesSinceLastSample += 1.0f;
@@ -402,7 +403,7 @@ int main(int argc, char** args)
         }
 
         NFrames++;
-
+        // printf("New frame\n");
         ppu.FrameComplete = false;
 
         SDL_RenderClear(Renderer); //clearing the renderer after each frame. required to avoid drawings persisting between frames.
@@ -412,7 +413,8 @@ int main(int argc, char** args)
         t2 = SDL_GetTicks();
         // printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1)/BytesPerSample);
         // while(SDL_GetQueuedAudioSize(1)){}
-        //capping framerate to 60 fps.
+        // while(SDL_GetQueuedAudioSize(1)){printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1));}
+        //capping framerate
         if( ( t2 - t1 ) < Frametime )
         {
             SDL_Delay( Frametime - (t2 - t1) );
