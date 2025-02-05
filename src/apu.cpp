@@ -154,88 +154,24 @@ void APU::ClockFrameCounter() //https://www.nesdev.org/wiki/APU_Frame_Counter
     }
 }
 
-std::uint16_t APU::ClockDMC()
+//using this function to avoid creating a pointer to the bus in the DMC function
+//it should work, but we shall see...
+void APU::PrefillSampleBuffer()
 {
-    DMC_Timer--;
-
-    if(!DMC_Timer) //if the timer is zero, we output a clock
-    {
-        DMC_Timer = DMC_RateIndexLUT[DMC_RateIndex]; //re-load the timer
-        OutputTimerClock_DMC();
-    }
-    return 0;
-    return DMC_OutputLevel;
-}
-
-void APU::OutputTimerClock_DMC()
-{
-    if(!DMC_SilenceFlag) //if silence flag is clear
-    {
-        if( (DMC_ShiftRegister & 1) && (DMC_OutputLevel <= 125) )
-        {
-            DMC_OutputLevel+=2;
-        }
-        else if( !(DMC_ShiftRegister & 1) && (DMC_OutputLevel >= 2) )
-        {
-            DMC_OutputLevel-=2;
-        }
-    }
-
-    DMC_ShiftRegister >>= 1;    //clocking right shift register by one
-
-    DMC_BitsRemaining--;        //decrementing the bits remaining counter
-
-    if(!DMC_BitsRemaining)      //output cycle has ended
-    {
-        DMC_BitsRemaining = 8;  //re-load with 8
-        if(!DMC_SampleBuffer)
-        {
-            DMC_SilenceFlag = 1; //set silence flag
-        }
-        else
-        {
-            DMC_SilenceFlag = 0; //clear silence flag
-            EmptyDMCSampleBuffer();
-        }
-    }
-}
-
-void APU::EmptyDMCSampleBuffer()
-{
-    DMC_ShiftRegister = DMC_SampleBuffer; //sample buffer emptied into shift register
-    DMC_SampleBuffer  = 0;
-
-    if( !DMC_SampleBuffer && DMC_BytesRemaining )
-    {
-        //sample buffer is filled with the next sample byte read from the current address, subject to whatever mapping hardware is present.
-        DMC_SampleBuffer = bus_ptr->CPUMemory[DMC_SampleAddrCurr];
-        // DMC_SampleBuffer = bus_ptr->ReadCPUBus(DMC_SampleAddrCurr); //need to sort out pushing a PPU class to this. todo future...
-
-        //address is incremented; if it exceeds $FFFF, it is wrapped around to $8000.
-        DMC_SampleAddrCurr = ( (DMC_SampleAddrCurr == 0xFFFF) ? 0x8000 : ( DMC_SampleAddrCurr + 1 ) );
-
-        DMC_BytesRemaining--; //decrementing the bytes remaining counter
-
-        if( !DMC_BytesRemaining && DMC_LoopFlag )
-        {
-            DMC_SampleAddrCurr   = DMC_SampleAddr;   //current address set to the sample address
-            DMC_BytesRemaining   = DMC_SampleLength; //bytes remaining set to the sample length
-        }
-        else if( !DMC_BytesRemaining && DMC_IRQEnabledFlag )
-        {
-            DMC_InterruptFlag = 1; //setting the interrupt flag
-        }
-    }
+    std::uint16_t NextDMCSampleAddr = ( (dmc.CurrentAddr == 0xFFFF) ? 0x8000 : dmc.CurrentAddr + 1 );
+    dmc.SampleBufferNext = bus_ptr->CPUMemory[NextDMCSampleAddr];
 }
 
 void APU::Clock()
 {
+    PrefillSampleBuffer();
     Pulse1_Output   = pulse1.Clock();
     Pulse2_Output   = pulse2.Clock();
     Triangle_Output = triangle.Clock();
     Triangle_Output = triangle.Clock(); //must clock twice per APU cycle. todo find a better way to implement this...
     Noise_Output    = noise.Clock();
-    // DMC_Output      = ClockDMC();
+    DMC_Output      = dmc.Clock();
+    DMC_Output      = dmc.Clock(); //clocking twice to account for the rate being per CPU cycle, not APU cycle
 
     ClockFrameCounter();
 }

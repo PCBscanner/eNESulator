@@ -266,7 +266,7 @@ int main(int argc, char** args)
     // std::string ROM = "../data/roms/ice_climber.nes";
     // std::string ROM = "../data/roms/mario_bros.nes";
     // std::string ROM = "../data/roms/popeye.nes";
-    std::string ROM = "../data/roms/smb.nes";
+    // std::string ROM = "../data/roms/smb.nes";
 
     //UTILITIES
     // std::string ROM = "../data/test_roms/controller.nes";
@@ -277,7 +277,7 @@ int main(int argc, char** args)
 
     //AUDIO UTILITIES
     // std::string ROM = "../data/test_roms/noise.nes";
-    // std::string ROM = "../data/test_roms/square.nes";
+    std::string ROM = "../data/test_roms/square.nes";
     // std::string ROM = "../data/test_roms/triangle.nes";
 
 
@@ -329,24 +329,35 @@ int main(int argc, char** args)
         {
             if(ppu.OAMDMA)
             {
-                switch( bus.DMACycles % 2 )
+                if(bus.DMACycles == 0)
                 {
-                    case(0):
+                    //halt cycle
+                }
+                else
+                {
+                    switch( cpu.PutCycle )
                     {
-                        cpu.DMAValue = bus.CPUMemory[ ( ppu.OAMDMA * 0x100 ) + ( bus.DMACycles >> 1 ) ];
-                    }break;
-                    case(1):
-                    {
-                        bus.OAM[(bus.DMACycles - 1) >> 1] = cpu.DMAValue;
-                    }break;
+                        case(false):
+                        {
+                            cpu.DMAValue = bus.CPUMemory[ ( ppu.OAMDMA * 0x100 ) + bus.OAMCount ];
+                            cpu.PutCycle = true;
+                        }break;
+                        case(true):
+                        {
+                            bus.OAM[bus.OAMCount] = cpu.DMAValue;
+                            bus.OAMCount++;
+                            cpu.PutCycle = false;
+                        }break;
+                    }
                 }
                 bus.DMACycles++;
                 CPUCycles++;
 
-                if(bus.DMACycles == 512)
+                if(bus.DMACycles == 513)
                 {
                     ppu.OAMDMA    = 0;
                     bus.DMACycles = 0;
+                    bus.OAMCount  = 0;
                 }
             }
             else

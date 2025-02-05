@@ -15,6 +15,7 @@ struct Bus
     bool AddressMirroring = true;
 
     std::uint16_t DMACycles         = 0;
+    std::uint16_t OAMCount          = 0;
 
     std::uint8_t CPUMemory[65536]   = {0};
 

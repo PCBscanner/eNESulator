@@ -18,6 +18,8 @@ struct CPU
 
     std::uint8_t DMAValue = 0x00;
 
+    bool PutCycle = false;
+
     //BOOLS FOR TRACKING NMI
     bool NMIAllowed = true; //potentially set to false and set to true after a set number of cycles?
     bool NMIActive = false;

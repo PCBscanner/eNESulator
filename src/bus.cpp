@@ -465,32 +465,37 @@ void Bus::WriteAPUBus(std::uint8_t Value, std::uint16_t Addr)
     }
     else if(Addr == 0x4010)
     {
-        apu_ptr->DMC_IRQEnabledFlag = (Value & 0b10000000) >> 7;
-        apu_ptr->DMC_LoopFlag       = (Value & 0b01000000) >> 6;
-        apu_ptr->DMC_RateIndex      = (Value & 0b00001111);
+        apu_ptr->dmc.IRQEnabledFlag = (Value & 0b10000000) >> 7;
+        apu_ptr->dmc.LoopFlag       = (Value & 0b01000000) >> 6;
+        apu_ptr->dmc.RateIndex      = (Value & 0b00001111);
     }
     else if(Addr == 0x4011)
     {
-        apu_ptr->DMC_DirectLoad  = (Value & 0b01111111);
-        apu_ptr->DMC_OutputLevel =  apu_ptr->DMC_DirectLoad;
+        apu_ptr->dmc.DirectLoad     = (Value & 0b01111111);
+        apu_ptr->dmc.OutputLevel    = apu_ptr->dmc.DirectLoad;
     }
     else if(Addr == 0x4012)
     {
-        apu_ptr->DMC_SampleAddr = 0xC000 + (Value << 6);
+        apu_ptr->dmc.SampleAddr     = 0xC000 | (Value << 6);
     }
     else if(Addr == 0x4013)
     {
-        apu_ptr->DMC_SampleLength = (Value << 4) + 1;
+        apu_ptr->dmc.SampleLength   = (Value << 4) + 1;
     }
     else if(Addr == 0x4015)
     {
-        apu_ptr->DMC_Enable       = (Value & 0b00010000) >> 4;
+        apu_ptr->dmc.Enabled      = (Value & 0b00010000) >> 4;
         apu_ptr->noise.Enabled    = (Value & 0b00001000) >> 3;
         apu_ptr->triangle.Enabled = (Value & 0b00000100) >> 2;
         apu_ptr->pulse2.Enabled   = (Value & 0b00000010) >> 1;
         apu_ptr->pulse1.Enabled   = (Value & 0b00000001);
 
         //forcing the length counter to 0 when the enabled bit is cleared
+
+        if(!apu_ptr->dmc.Enabled)
+        {
+            apu_ptr->dmc.BytesRemaining = 0;
+        }
         if(!apu_ptr->noise.Enabled)
         {
             apu_ptr->noise.LengthCounter = 0;
@@ -507,12 +512,7 @@ void Bus::WriteAPUBus(std::uint8_t Value, std::uint16_t Addr)
         {
             apu_ptr->pulse1.LengthCounter = 0;
         }
-
-        if(!apu_ptr->DMC_Enable)
-        {
-            apu_ptr->DMC_BytesRemaining = 0;
-        }
-        apu_ptr->DMC_InterruptFlag = 0;
+        apu_ptr->dmc.IRQEnabledFlag = 0; //Writing to this register clears the DMC interrupt flag.
     }
     else if(Addr == 0x4017)
     {
@@ -525,9 +525,9 @@ std::uint8_t Bus::ReadAPUBus(std::uint16_t Addr)
 {
     if(Addr == 0x4015)
     {
-        CPUMemory[0x4015] |=   (apu_ptr->DMC_InterruptFlag               << 7);
+        CPUMemory[0x4015] |=   (apu_ptr->dmc.IRQFlag                     << 7);
         CPUMemory[0x4015] |=   (apu_ptr->FrameInterrupt                  << 6);
-        CPUMemory[0x4015] |= ( (apu_ptr->DMC_BytesRemaining     ? 1 : 0) << 4);
+        CPUMemory[0x4015] |= ( (apu_ptr->dmc.BytesRemaining     ? 1 : 0) << 4);
         CPUMemory[0x4015] |= ( (apu_ptr->noise.LengthCounter    ? 1 : 0) << 3);
         CPUMemory[0x4015] |= ( (apu_ptr->triangle.LengthCounter ? 1 : 0) << 2);
         CPUMemory[0x4015] |= ( (apu_ptr->pulse2.LengthCounter   ? 1 : 0) << 1);

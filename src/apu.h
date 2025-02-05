@@ -1,11 +1,13 @@
 #pragma once
 
 #include "../src/bus.h"
+#include "../src/dmc.h"
 #include "../src/noise.h"
 #include "../src/pulse.h"
 #include "../src/triangle.h"
 
 struct Bus; //forward declaring the bus
+struct DMC;
 struct Noise;
 struct Pulse; //forward declaring a pulse channel
 struct Triangle;
@@ -13,6 +15,7 @@ struct Triangle;
 struct APU
 {
     Bus* bus_ptr;
+    DMC dmc;
     Noise noise;
     Pulse pulse1;
     Pulse pulse2;
@@ -27,36 +30,8 @@ struct APU
     std::uint32_t Cycle             = 0;
     std::uint8_t  Sequencer         = 0;
 
-    //DMC CHANNEL https://www.nesdev.org/wiki/APU_DMC
-    //$4010
-    std::uint8_t  DMC_IRQEnabledFlag   = 0;
-    std::uint8_t  DMC_LoopFlag         = 0;
-    std::uint8_t  DMC_RateIndex        = 0;
-    //$4011
-    std::uint8_t  DMC_DirectLoad       = 0;
-    //$4012
-    std::uint16_t DMC_SampleAddr       = 0;
-    //$4013
-    std::uint16_t DMC_SampleLength     = 0;
-    //additional variables to control & track DMC
-    std::uint8_t  DMC_IRQFlag          = 0;
-    std::uint16_t DMC_Timer            = 0;
-    std::uint8_t  DMC_OutputLevel      = 0;
-    std::uint8_t  DMC_SilenceFlag      = 0;
-    std::uint8_t  DMC_BitsRemaining    = 0;
-    std::uint8_t  DMC_BytesRemaining   = 0;
-    std::uint8_t  DMC_ShiftRegister    = 0;
-    std::uint8_t  DMC_SampleBuffer     = 0;
-    std::uint16_t DMC_SampleAddrCurr   = 0;
-
-    //control $4015 write
-    std::uint8_t DMC_Enable                   = 0;
-    std::uint8_t Noise_LengthCounterEnable    = 0;
-
     //status $4015 read
-    std::uint8_t DMC_InterruptFlag    = 0;
     std::uint8_t FrameInterrupt       = 0;
-    std::uint8_t DMC_Active           = 0;
 
     //mixer parameters
     std::uint16_t Pulse1_Output   =  0;
@@ -95,12 +70,7 @@ struct APU
 
     void ClockLengthCounter();
 
-    std::uint16_t ClockDMC();
-    void OutputTimerClock_DMC();
-    void EmptyDMCSampleBuffer();
+    void PrefillSampleBuffer();
 
     void Clock();
-
-    //pulse sequencer LUT
-    std::uint16_t DMC_RateIndexLUT[16] = {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54};
 };
