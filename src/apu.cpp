@@ -159,7 +159,7 @@ void APU::ClockFrameCounter() //https://www.nesdev.org/wiki/APU_Frame_Counter
 void APU::PrefillSampleBuffer()
 {
     std::uint16_t NextDMCSampleAddr = ( (dmc.CurrentAddr == 0xFFFF) ? 0x8000 : dmc.CurrentAddr + 1 );
-    dmc.SampleBufferNext = bus_ptr->CPUMemory[NextDMCSampleAddr];
+    dmc.SampleBufferNext = bus_ptr->ReadCPUBus(NextDMCSampleAddr);
 }
 
 void APU::Clock()

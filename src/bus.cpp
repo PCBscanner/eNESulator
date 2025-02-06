@@ -8,6 +8,11 @@ void Bus::ConnectAPU(APU& apu)
     apu_ptr = &apu; //hopefully creating a pointer to the APU struct to reference elsewhere without continually passing it around
 }
 
+void Bus::ConnectPPU(PPU& ppu)
+{
+    ppu_ptr = &ppu;
+}
+
 void Bus::LoadCartridge(std::string Cartridge)
 {
     std::ifstream stream(Cartridge, std::ios::in | std::ios::binary);
@@ -123,7 +128,7 @@ void Bus::SelectBank(std::uint8_t Bank)
     }
 }
 
-void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
+void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr)
 {
     if(AddressMirroring == true)
     {
@@ -136,12 +141,12 @@ void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
         {
             Addr &= 0x2007;
             CPUMemory[Addr] = Value;
-            WritePPUBus(Value, Addr, ppu);
+            WritePPUBus(Value, Addr);
         }
         else if(Addr == 0x4014) //OAMDMA
         {
             CPUMemory[Addr] = Value;
-            WritePPUBus(Value, Addr, ppu);
+            WritePPUBus(Value, Addr);
         }
         else if(Addr == 0x4016) //joystick strobe
         {
@@ -170,7 +175,7 @@ void Bus::WriteCPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
     }
 }
 
-std::uint8_t Bus::ReadCPUBus(std::uint16_t Addr, PPU& ppu)
+std::uint8_t Bus::ReadCPUBus(std::uint16_t Addr)
 {
     std::uint8_t Value = 0;
     if(AddressMirroring == true)
@@ -184,7 +189,7 @@ std::uint8_t Bus::ReadCPUBus(std::uint16_t Addr, PPU& ppu)
         {
             Addr &= 0x2007;
             Value = CPUMemory[Addr];
-            std::uint8_t ValuePPU = ReadPPUBus(Addr, ppu); //to make sure we set the right flags
+            std::uint8_t ValuePPU = ReadPPUBus(Addr); //to make sure we set the right flags
         }
         else if(Addr == 0x4015) //APU sound channel and IRQ status
         {
@@ -211,35 +216,35 @@ std::uint8_t Bus::ReadCPUBus(std::uint16_t Addr, PPU& ppu)
     return Value;
 }
 
-void Bus::WritePPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
+void Bus::WritePPUBus(std::uint8_t Value, std::uint16_t Addr)
 {
     switch (Addr)
     {
         case(0x2000): //PPUCTRL
         {
-            ppu.PPUCTRL = Value;
-            ppu.T = (ppu.T & 0b111001111111111) | ( (Value & 0b11) << 10 ); //base nametable address
+            ppu_ptr->PPUCTRL = Value;
+            ppu_ptr->T = (ppu_ptr->T & 0b111001111111111) | ( (Value & 0b11) << 10 ); //base nametable address
             CPUMemory[Addr] = Value;
         }break;
         case(0x2001): //PPUMASK
         {
             if ( (Value & 0b00001000) != 0 )
             {
-                ppu.RenderBackground = true;
+                ppu_ptr->RenderBackground = true;
             }
             else
             {
-                ppu.RenderBackground = false;
+                ppu_ptr->RenderBackground = false;
             }
             if ( (Value & 0b00010000) != 0 )
             {
-                ppu.RenderSprites = true;
+                ppu_ptr->RenderSprites = true;
             }
             else
             {
-                ppu.RenderSprites = false;
+                ppu_ptr->RenderSprites = false;
             }
-            ppu.PPUMASK = Value;
+            ppu_ptr->PPUMASK = Value;
             CPUMemory[Addr] = Value;
         }break;
         case(0x2002): //PPUSTATUS
@@ -248,63 +253,63 @@ void Bus::WritePPUBus(std::uint8_t Value, std::uint16_t Addr, PPU& ppu)
         }break;
         case(0x2003): //OAMADDR
         {
-            ppu.OAMADDR = Value;
+            ppu_ptr->OAMADDR = Value;
         }break;
         case(0x2004): //OAMDATA
         {
 
-            OAM[ppu.OAMADDR] = Value;
-            ppu.OAMADDR++;
+            OAM[ppu_ptr->OAMADDR] = Value;
+            ppu_ptr->OAMADDR++;
         }break;
         case(0x2005): //PPUSCROLL
         {
-            if(ppu.W == 0) //first write
+            if(ppu_ptr->W == 0) //first write
             {
-                ppu.T  = (ppu.T & 0b111111111100000) | (Value >> 3);    //coarse-x
-                ppu.X  = (Value & 0b111); //fine-x
-                ppu.W  = 1;               //address latch
+                ppu_ptr->T  = (ppu_ptr->T & 0b111111111100000) | (Value >> 3);    //coarse-x
+                ppu_ptr->X  = (Value & 0b111); //fine-x
+                ppu_ptr->W  = 1;               //address latch
             }
             else //second write
             {
-                ppu.T  = (ppu.T & 0b000111111111111) | ( (Value & 0b00000111) << 12 ); //fine-y
-                ppu.T  = (ppu.T & 0b111110000011111) | ( (Value & 0b11111000) << 2  ); //coarse-y
-                ppu.W  = 0;
+                ppu_ptr->T  = (ppu_ptr->T & 0b000111111111111) | ( (Value & 0b00000111) << 12 ); //fine-y
+                ppu_ptr->T  = (ppu_ptr->T & 0b111110000011111) | ( (Value & 0b11111000) << 2  ); //coarse-y
+                ppu_ptr->W  = 0;
             }
         }break;
         case(0x2006): //PPUADDR
         {
-            if(ppu.W == 0) //writing hi byte first
+            if(ppu_ptr->W == 0) //writing hi byte first
             {
-                ppu.T  = ( ( Value & 0x3F ) << 8 ) | ( ppu.T & 0x00FF );
-                ppu.T &= 0b011111111111111; //clearing bit 14 of t
-                ppu.W  = 1;
+                ppu_ptr->T  = ( ( Value & 0x3F ) << 8 ) | ( ppu_ptr->T & 0x00FF );
+                ppu_ptr->T &= 0b011111111111111; //clearing bit 14 of t
+                ppu_ptr->W  = 1;
             }
             else //then writing the lo byte if the latch has been reset
             {
-                ppu.T = (ppu.T & 0xFF00) | Value;
-                ppu.V =  ppu.T;
-                ppu.W =  0;
+                ppu_ptr->T = (ppu_ptr->T & 0xFF00) | Value;
+                ppu_ptr->V =  ppu_ptr->T;
+                ppu_ptr->W =  0;
             }
         }break;
         case(0x2007): //PPUDATA
         {
-            std::uint16_t Addr = ppu.V;
+            std::uint16_t Addr = ppu_ptr->V;
 
             MirrorPPUAddr(Addr);
 
             PPUMemory[Addr] = Value;
             // printf("Writing $%02x to $%04x\n", Value, Addr);
-            IncrementPPUADDR(ppu);
+            IncrementPPUADDR();
         }break;
         case(0x4014): //OAMDMA
         {
-            ppu.OAMDMA = Value;
+            ppu_ptr->OAMDMA = Value;
         }break;
 
     }
 }
 
-std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
+std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr)
 {
     std::uint8_t Value = 0;
     switch (Addr)
@@ -319,9 +324,9 @@ std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
         }break;
         case(0x2002): //PPUSTATUS
         {
-            ppu.W = 0; //clearing the w-register on read.
-            ppu.PPUSTATUS &= 0b01111111; //clearing vblank
-            Value = (ppu.PPUSTATUS & 0xE0) | (ppu.PPUDATABuffer & 0x1F);
+            ppu_ptr->W = 0; //clearing the w-register on read.
+            ppu_ptr->PPUSTATUS &= 0b01111111; //clearing vblank
+            Value = (ppu_ptr->PPUSTATUS & 0xE0) | (ppu_ptr->PPUDATABuffer & 0x1F);
         }break;
         case(0x2003): //OAMADDR
         {
@@ -329,7 +334,7 @@ std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
         }break;
         case(0x2004): //OAMDATA
         {
-             Value = OAM[ppu.OAMADDR];
+             Value = OAM[ppu_ptr->OAMADDR];
         }break;
         case(0x2005): //PPUSCROLL
         {
@@ -341,24 +346,24 @@ std::uint8_t Bus::ReadPPUBus(std::uint16_t Addr, PPU& ppu)
         }break;
         case(0x2007): //PPUDATA
         {
-            std::uint16_t AddrVRAM = ppu.V;
+            std::uint16_t AddrVRAM = ppu_ptr->V;
 
             MirrorPPUAddr(AddrVRAM); //this is now mirrored
 
             if(AddrVRAM >= 0x3F00)
             {
                 Value = PPUMemory[AddrVRAM]; //directly returning the palette memory
-                std::uint16_t AddrVRAMShadow = ppu.V & 0x2FFF;      //getting to the "underlying" value in VRAM
+                std::uint16_t AddrVRAMShadow = ppu_ptr->V & 0x2FFF;      //getting to the "underlying" value in VRAM
                 MirrorPPUAddr(AddrVRAMShadow); //mirroring AGAIN
-                ppu.PPUDATABuffer = PPUMemory[AddrVRAMShadow]; //setting the data buffer to the "underlying" value in VRAM
+                ppu_ptr->PPUDATABuffer = PPUMemory[AddrVRAMShadow]; //setting the data buffer to the "underlying" value in VRAM
             }
             else
             {
-                Value = ppu.PPUDATABuffer; //normal buffering
-                ppu.PPUDATABuffer = PPUMemory[AddrVRAM];
+                Value = ppu_ptr->PPUDATABuffer; //normal buffering
+                ppu_ptr->PPUDATABuffer = PPUMemory[AddrVRAM];
             }
 
-            IncrementPPUADDR(ppu);
+            IncrementPPUADDR();
         }break;
         case(0x4014): //OAMDMA
         {
@@ -591,15 +596,15 @@ void Bus::MirrorPPUAddr(std::uint16_t& Addr)
     }
 }
 
-void Bus::IncrementPPUADDR(PPU& ppu)
+void Bus::IncrementPPUADDR()
 {
-    if((ppu.PPUCTRL & 0b100) == 0)
+    if((ppu_ptr->PPUCTRL & 0b100) == 0)
     {
-        ppu.V += 1; //add 1, going across.
+        ppu_ptr->V += 1; //add 1, going across.
     }
     else
     {
-        ppu.V += 32; //add 32, going down
+        ppu_ptr->V += 32; //add 32, going down
     }
 }
 
@@ -614,11 +619,11 @@ void Bus::PollController()
 }
 
 //updating only those registers that the ppu can write to.
-void Bus::UpdateMMIO(PPU& ppu)
+void Bus::UpdateMMIO()
 {
-    CPUMemory[ppu.PPUSTATUSAddr] = ppu.PPUSTATUS;
-    CPUMemory[ppu.OAMDATAAddr]   = ppu.OAMDATA;
-    CPUMemory[ppu.PPUDATAAddr]   = ppu.PPUDATABuffer;
+    CPUMemory[ppu_ptr->PPUSTATUSAddr] = ppu_ptr->PPUSTATUS;
+    CPUMemory[ppu_ptr->OAMDATAAddr]   = ppu_ptr->OAMDATA;
+    CPUMemory[ppu_ptr->PPUDATAAddr]   = ppu_ptr->PPUDATABuffer;
 }
 
 //H flip LUT (call when loading cartridge into memory).

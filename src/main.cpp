@@ -266,7 +266,7 @@ int main(int argc, char** args)
     // std::string ROM = "../data/roms/ice_climber.nes";
     // std::string ROM = "../data/roms/mario_bros.nes";
     // std::string ROM = "../data/roms/popeye.nes";
-    // std::string ROM = "../data/roms/smb.nes";
+    std::string ROM = "../data/roms/smb.nes";
 
     //UTILITIES
     // std::string ROM = "../data/test_roms/controller.nes";
@@ -277,11 +277,12 @@ int main(int argc, char** args)
 
     //AUDIO UTILITIES
     // std::string ROM = "../data/test_roms/noise.nes";
-    std::string ROM = "../data/test_roms/square.nes";
+    // std::string ROM = "../data/test_roms/square.nes";
     // std::string ROM = "../data/test_roms/triangle.nes";
 
 
     bus.ConnectAPU(apu);
+    bus.ConnectPPU(ppu);
     apu.ConnectBus(bus);
 
     bus.LoadCartridge(ROM);
@@ -296,12 +297,12 @@ int main(int argc, char** args)
     std::uint16_t AudioSampleCounter = 0;
     std::uint32_t NCyclesPPUWarmUp   = 29658;
 
-    CPUCycles = cpu.Reset(bus, ppu);
+    CPUCycles = cpu.Reset(bus);
 
     //Initial warm-up of the CPU
     while(CPUCycles < NCyclesPPUWarmUp)
     {
-        cpu.Execute(CPUCycles, bus, ppu);
+        cpu.Execute(CPUCycles, bus);
     }
     CPUCycles = 0;
 
@@ -364,17 +365,17 @@ int main(int argc, char** args)
             {
                 if (ppu.SetNMI(bus) && !NMI)
                 {
-                    cpu.ExecuteNMI(CPUCycles, bus, ppu);
+                    cpu.ExecuteNMI(CPUCycles, bus);
                     NMI = true;
                 }
                 else if (!ppu.SetNMI(bus) && NMI)
                 {
-                    cpu.Execute(CPUCycles, bus, ppu);
+                    cpu.Execute(CPUCycles, bus);
                     NMI = false;
                 }
                 else
                 {
-                    cpu.Execute(CPUCycles, bus, ppu);
+                    cpu.Execute(CPUCycles, bus);
                 }
             }
             //clocking PPU
@@ -382,7 +383,7 @@ int main(int argc, char** args)
             {
                 ppu.Clock(bus);
                 PPUCycles++;
-                bus.UpdateMMIO(ppu);
+                bus.UpdateMMIO();
             }
             //clocking APU
             while (APUCycles <= (0.5*CPUCycles))

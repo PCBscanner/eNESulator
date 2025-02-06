@@ -12,6 +12,8 @@ struct Bus
 
     APU* apu_ptr;
 
+    PPU* ppu_ptr;
+
     bool AddressMirroring = true;
 
     std::uint16_t DMACycles         = 0;
@@ -47,30 +49,31 @@ struct Bus
     const std::uint8_t CONTROLLER_RIGHT   = 0b10000000;
 
     void ConnectAPU(APU&);
+    void ConnectPPU(PPU&);
 
     void LoadCartridge(std::string);
 
     void SelectBank(std::uint8_t);
 
-    void WriteCPUBus(std::uint8_t, std::uint16_t, PPU&);
+    void WriteCPUBus(std::uint8_t, std::uint16_t);
 
-    std::uint8_t ReadCPUBus(std::uint16_t, PPU&);
+    std::uint8_t ReadCPUBus(std::uint16_t);
 
-    void WritePPUBus(std::uint8_t, std::uint16_t, PPU&);
+    void WritePPUBus(std::uint8_t, std::uint16_t);
 
-    std::uint8_t ReadPPUBus(std::uint16_t, PPU&);
+    std::uint8_t ReadPPUBus(std::uint16_t);
 
     void WriteAPUBus(std::uint8_t, std::uint16_t);
 
     std::uint8_t ReadAPUBus(std::uint16_t);
 
-    void IncrementPPUADDR(PPU&);
+    void IncrementPPUADDR();
 
     void MirrorPPUAddr(std::uint16_t&);
 
     void PollController();
 
-    void UpdateMMIO(PPU&);
+    void UpdateMMIO();
 
     std::uint8_t ReverseByte(std::uint8_t);
 };
