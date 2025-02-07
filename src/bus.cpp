@@ -43,8 +43,8 @@ void Bus::LoadCartridge(std::string Cartridge)
     CHRROMStartAddr = PRGROMStartAddr + (PRGROMSize*16384);
     NametableMirror = Flags6 & 1;
     Mapper          = (Flags6 & 0b11110000) >> 4;
+    CHRRAM_Enabled  = (!CHRROMSize ? true : false);
 
-    // printf("Mapper: %03d\n", Mapper);
     //Loading PRG ROM to the CPU memory
     //This assumes that trainers are not included.
 
@@ -297,8 +297,15 @@ void Bus::WritePPUBus(std::uint8_t Value, std::uint16_t Addr)
 
             MirrorPPUAddr(Addr);
 
-            PPUMemory[Addr] = Value;
-            // printf("Writing $%02x to $%04x\n", Value, Addr);
+            if( (Addr <= 0x1FFF) && !CHRRAM_Enabled )
+            {
+                //should not write to CHR_ROM. E.g. 1942 tries to...
+            }
+            else
+            {
+                PPUMemory[Addr] = Value;
+            }
+
             IncrementPPUADDR();
         }break;
         case(0x4014): //OAMDMA

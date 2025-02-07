@@ -1,8 +1,8 @@
 #pragma once
 #include <sstream>
 
-const std::uint32_t WINDOW_WIDTH         = 1280;
-const std::uint32_t WINDOW_HEIGHT        = 1080;
+const std::uint32_t WINDOW_WIDTH         = 1016;
+const std::uint32_t WINDOW_HEIGHT        = 960;
 
 const std::uint32_t CHRTABLE_RENDERSCALE = 2;
 const std::uint32_t CHRTABLE_WIDTH       = 128;
@@ -18,8 +18,8 @@ const std::uint32_t CPUSTATUS_POSY       = 900;
 const std::uint32_t SCREEN_RENDERSCALE   = 4;
 const std::uint32_t SCREEN_WIDTH         = 256;
 const std::uint32_t SCREEN_HEIGHT        = 240;
-const std::uint32_t SCREEN_POSX          = 0.5*(WINDOW_WIDTH/SCREEN_RENDERSCALE - SCREEN_WIDTH);
-const std::uint32_t SCREEN_POSY          = 0.5*(WINDOW_HEIGHT/SCREEN_RENDERSCALE - SCREEN_HEIGHT);
+const std::uint32_t SCREEN_POSX          = 0*(WINDOW_WIDTH/SCREEN_RENDERSCALE - SCREEN_WIDTH);
+const std::uint32_t SCREEN_POSY          = 0*(WINDOW_HEIGHT/SCREEN_RENDERSCALE - SCREEN_HEIGHT);
 // const std::uint32_t SCREEN_POSY          = 10;
 
 void logSDLError(std::ostream &os, const std::string &msg){

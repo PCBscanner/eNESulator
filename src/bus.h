@@ -14,7 +14,7 @@ struct Bus
 
     PPU* ppu_ptr;
 
-    bool AddressMirroring = true;
+    bool AddressMirroring = true; //used to disable address mirroring for debugging purposes.
 
     std::uint16_t DMACycles         = 0;
     std::uint16_t OAMCount          = 0;
@@ -37,6 +37,7 @@ struct Bus
     std::uint32_t CHRROMStartAddr   = 0;
     std::uint8_t  NametableMirror   = 0; //1 = vertical, 0 = horizontal
     std::uint8_t  Mapper            = 0;
+    bool          CHRRAM_Enabled    = false;
 
     //controller button bit flags
     const std::uint8_t CONTROLLER_A       = 0b00000001;

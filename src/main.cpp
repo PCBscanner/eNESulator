@@ -258,7 +258,7 @@ int main(int argc, char** args)
     SDL_PauseAudio(0); //must un-pause audio first
 
     //GAMES
-    // std::string ROM = "../data/roms/1942.nes";
+    std::string ROM = "../data/roms/1942.nes";
     // std::string ROM = "../data/roms/castlevania.nes";
     // std::string ROM = "../data/roms/dk.nes";
     // std::string ROM = "../data/roms/excitebike.nes";
@@ -266,7 +266,7 @@ int main(int argc, char** args)
     // std::string ROM = "../data/roms/ice_climber.nes";
     // std::string ROM = "../data/roms/mario_bros.nes";
     // std::string ROM = "../data/roms/popeye.nes";
-    std::string ROM = "../data/roms/smb.nes";
+    // std::string ROM = "../data/roms/smb.nes";
 
     //UTILITIES
     // std::string ROM = "../data/test_roms/controller.nes";
