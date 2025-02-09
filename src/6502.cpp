@@ -1,32 +1,41 @@
 #include "../src/6502.h"
 
+void CPU::ConnectBus(Bus& bus)
+{
+    bus_ptr = &bus;
+}
+
 //RESETTING THE CPU
-std::uint32_t CPU::Reset(Bus& bus) //returning the number of cycles used on a reset
+std::uint32_t CPU::Reset() //returning the number of cycles used on a reset
 {
     PC = 0xFFFC; //6502 reads the reset vector from 0xFFFC and 0xFFFD
-    SP -= 3;
+    SP = 0xFD;
     PS |= 0b00100100; //TBC what this should actually be
     A = X = Y = 0x00;
+    DMAValue = 0x00;
+    PutCycle = false;
+    NMIAllowed = true;
+    NMIActive  = false;
     std::uint32_t Cycles = 0;
-    PC = FetchWord(Cycles, bus);
+    PC = FetchWord(Cycles);
     return Cycles += 5; //total number of cycles used for the reset is 7
 }
 
 //FETCHING, READING, AND WRITING, FROM MEMORY
-std::uint8_t CPU::FetchByte(std::uint32_t& Cycles, Bus& bus) // reading from where the program counter is right now and then incrementing it
+std::uint8_t CPU::FetchByte(std::uint32_t& Cycles) // reading from where the program counter is right now and then incrementing it
 {
-    std::uint8_t Data = bus.ReadCPUBus(PC);
+    std::uint8_t Data = bus_ptr->ReadCPUBus(PC);
     PC++; //incrementing the program counter
     Cycles++;
     return Data;
 }
 
-std::uint16_t CPU::FetchWord(std::uint32_t& Cycles, Bus& bus) // reading from where the program counter is right now and then incrementing it (twice)
+std::uint16_t CPU::FetchWord(std::uint32_t& Cycles) // reading from where the program counter is right now and then incrementing it (twice)
 {
     //6502 is little endian
     //first byte is LSB
-    std::uint8_t LoByte = FetchByte(Cycles, bus);
-    std::uint8_t HiByte = FetchByte(Cycles, bus);
+    std::uint8_t LoByte = FetchByte(Cycles);
+    std::uint8_t HiByte = FetchByte(Cycles);
     return LoByte | (HiByte << 8); //bit-shifting and using logical OR to get the 16-bit (2 byte) word.
 }
 
@@ -430,13 +439,13 @@ void CPU::RotateRight(std::uint8_t Value, std::uint16_t  Addr, std::uint32_t& Cy
 //ADDRESSING MODES
 std::uint16_t CPU::AddrZeroPage(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte( Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     return ZeroPageAddr;
 }
 
 std::uint16_t CPU::AddrZeroPageX(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte( Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     ZeroPageAddr += X; //wrap account for in the variable type
     Cycles++;
     return ZeroPageAddr;
@@ -444,7 +453,7 @@ std::uint16_t CPU::AddrZeroPageX(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrZeroPageY(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte( Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     ZeroPageAddr += Y; //wrap account for in the variable type
     Cycles++;
     return ZeroPageAddr;
@@ -452,13 +461,13 @@ std::uint16_t CPU::AddrZeroPageY(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrAbs(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint16_t  AbsAddr = FetchWord(Cycles, bus);
+    std::uint16_t  AbsAddr = FetchWord(Cycles);
     return AbsAddr;
 }
 
 std::uint16_t CPU::AddrAbsX(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint16_t  AbsAddr = FetchWord(Cycles, bus); //2 cycles to fetch the word
+    std::uint16_t  AbsAddr = FetchWord(Cycles); //2 cycles to fetch the word
     std::uint16_t  AbsAddrX = AbsAddr + X; //WHY DOES THIS NOT COST A CYCLE?
     //checking if the page boundary has been crossed
     //the operand's low byte is fetched before the high byte, so the processor can start adding the X register's value before it has the high byte. If there is no carry operation, the entire indexed operation takes only four clocks,
@@ -471,7 +480,7 @@ std::uint16_t CPU::AddrAbsX(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrAbsXWrite(std::uint32_t& Cycles, Bus& bus) //used for instructions that always use an additional cycle regardless of if a page boundary has been crossed
 {
-    std::uint16_t  AbsAddr = FetchWord(Cycles, bus); //2 cycles to fetch the word
+    std::uint16_t  AbsAddr = FetchWord(Cycles); //2 cycles to fetch the word
     std::uint16_t  AbsAddrX = AbsAddr + X;
     Cycles++;
     return AbsAddrX;
@@ -479,7 +488,7 @@ std::uint16_t CPU::AddrAbsXWrite(std::uint32_t& Cycles, Bus& bus) //used for ins
 
 std::uint16_t CPU::AddrAbsY(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint16_t  AbsAddr = FetchWord(Cycles, bus); //2 cycles to fetch the word
+    std::uint16_t  AbsAddr = FetchWord(Cycles); //2 cycles to fetch the word
     std::uint16_t  AbsAddrY = AbsAddr + Y; //WHY DOES THIS NOT COST A CYCLE?
     //checking if the page boundary has been crossed
     //the operand's low byte is fetched before the high byte, so the processor can start adding the X register's value before it has the high byte. If there is no carry operation, the entire indexed operation takes only four clocks,
@@ -492,7 +501,7 @@ std::uint16_t CPU::AddrAbsY(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrAbsYSTA(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint16_t  AbsAddr = FetchWord(Cycles, bus); //2 cycles to fetch the word
+    std::uint16_t  AbsAddr = FetchWord(Cycles); //2 cycles to fetch the word
     std::uint16_t  AbsAddrY = AbsAddr + Y;
     Cycles++;
     return AbsAddrY;
@@ -500,7 +509,7 @@ std::uint16_t CPU::AddrAbsYSTA(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrIndX(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte(Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     std::uint8_t AddrTmp = ((ZeroPageAddr + X)&0xFF);
     Cycles++;
     std::uint8_t LoByte = ReadByte(Cycles, AddrTmp, bus);
@@ -512,7 +521,7 @@ std::uint16_t CPU::AddrIndX(std::uint32_t& Cycles, Bus& bus)
 
 std::uint16_t CPU::AddrIndY(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte(Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     std::uint8_t LoByte = ReadByte(Cycles, ZeroPageAddr, bus);
     std::uint8_t HiByte = ReadByte(Cycles, ((ZeroPageAddr+1)&0xFF), bus);
     std::uint16_t  AddrTmp = LoByte | (HiByte << 8);
@@ -527,7 +536,7 @@ std::uint16_t CPU::AddrIndY(std::uint32_t& Cycles, Bus& bus)
 //adding a separate IndY addressing mode for STA because we always consume 6 cycles regardless of if we cross a page boundary
 std::uint16_t CPU::AddrIndYSTA(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t ZeroPageAddr = FetchByte(Cycles, bus);
+    std::uint8_t ZeroPageAddr = FetchByte(Cycles);
     std::uint8_t LoByte = ReadByte(Cycles, ZeroPageAddr, bus);
     std::uint8_t HiByte = ReadByte(Cycles, ((ZeroPageAddr+1)&0xFF), bus);
     std::uint16_t  AddrTmp = LoByte | (HiByte << 8);
@@ -540,7 +549,7 @@ std::uint16_t CPU::AddrIndYSTA(std::uint32_t& Cycles, Bus& bus)
 //loading a register with the value from the location specified in the PC
 void CPU::LoadRegFromPC(std::uint8_t& Register, std::uint32_t& Cycles, Bus& bus)
 {
-    Register = FetchByte(Cycles, bus);
+    Register = FetchByte(Cycles);
     LDValueSetProcessorStatus(Register);
 }
 
@@ -573,7 +582,7 @@ void CPU::ExecuteNMI(std::uint32_t& Cycles, Bus& bus)
 //EXECUTING INSTRUCTIONS
 void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 {
-    std::uint8_t Ins = FetchByte(Cycles, bus);
+    std::uint8_t Ins = FetchByte(Cycles);
     switch ( Ins )
     {
         case INS_LDA_IM:
@@ -779,7 +788,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_JMP_ABS:
         {
-            std::uint16_t Addr = FetchWord(Cycles, bus);
+            std::uint16_t Addr = FetchWord(Cycles);
             PC = Addr;
         } break;
 
@@ -787,7 +796,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
         {
             //workaround for incorrect operation of the original 6502
             //An original 6502 has does not correctly fetch the target address if the indirect vector falls on a page boundary (e.g. $xxFF where xx is any value from $00 to $FF). In this case fetches the LSB from $xxFF as expected but takes the MSB from $xx00. This is fixed in some later chips like the 65SC02 so for compatibility always ensure the indirect vector is not at the end of the page.
-            std::uint16_t  AddrIndirect = FetchWord(Cycles, bus);
+            std::uint16_t  AddrIndirect = FetchWord(Cycles);
             std::uint8_t LoByte = ReadByte(Cycles, AddrIndirect, bus);
             std::uint8_t HiByte = 0;
             if ((AddrIndirect & 0xFF) == 0xFF)
@@ -841,19 +850,19 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_AND_IM:
         {
-            A &= FetchByte(Cycles, bus);
+            A &= FetchByte(Cycles);
             LDValueSetProcessorStatus(A);
         }break;
 
         case INS_EOR_IM:
         {
-            A ^= FetchByte(Cycles, bus);
+            A ^= FetchByte(Cycles);
             LDValueSetProcessorStatus(A);
         }break;
 
         case INS_ORA_IM:
         {
-            A |= FetchByte(Cycles, bus);
+            A |= FetchByte(Cycles);
             LDValueSetProcessorStatus(A);
         }break;
 
@@ -1174,7 +1183,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BEQ:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b00000010) != 0) //if the zero flag is set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1183,7 +1192,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BNE:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b00000010) == 0) //if the zero flag is not set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1192,7 +1201,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BCS:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b00000001) != 0) //if the zero flag is set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1201,7 +1210,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BCC:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b00000001) == 0) //if the zero flag is not set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1211,7 +1220,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BMI:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b10000000) != 0) //if the flag is set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1220,7 +1229,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BPL:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b10000000) == 0) //if the flag is not set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1229,7 +1238,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BVS:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b01000000) != 0) //if the flag is set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1238,7 +1247,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_BVC:
         {
-            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles, bus));
+            std::int8_t Displacement = static_cast<std::int8_t>(FetchByte(Cycles));
             if ((PS & 0b01000000) == 0) //if the flag is not set, then we branch
             {
                 BranchToLocn(Displacement, Cycles, bus);
@@ -1313,7 +1322,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_ADC_IMM:
         {
-            std::uint8_t Operand = FetchByte(Cycles, bus);
+            std::uint8_t Operand = FetchByte(Cycles);
             CalculateADC(Operand);
         }break;
 
@@ -1369,7 +1378,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_SBC_IMM:
         {
-            std::uint8_t Operand = FetchByte(Cycles, bus);
+            std::uint8_t Operand = FetchByte(Cycles);
             CalculateSBC(Operand);
         }break;
 
@@ -1426,7 +1435,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_CMP_IMM:
         {
-            std::uint8_t Operand = FetchByte(Cycles, bus);
+            std::uint8_t Operand = FetchByte(Cycles);
             SetStatusFlagsCompare(A, Operand);
         }break;
 
@@ -1481,7 +1490,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_CPX_IMM:
         {
-            std::uint8_t Operand = FetchByte(Cycles, bus);
+            std::uint8_t Operand = FetchByte(Cycles);
             SetStatusFlagsCompare(X, Operand);
         }break;
 
@@ -1501,7 +1510,7 @@ void CPU::Execute(std::uint32_t& Cycles, Bus& bus)
 
         case INS_CPY_IMM:
         {
-            std::uint8_t Operand = FetchByte(Cycles, bus);
+            std::uint8_t Operand = FetchByte(Cycles);
             SetStatusFlagsCompare(Y, Operand);
         }break;
 

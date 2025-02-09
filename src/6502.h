@@ -2,25 +2,28 @@
 #include "../src/bus.h"
 #include "../src/ppu.h"
 
+struct Bus;
+
 struct CPU
 {
+    Bus* bus_ptr;
 
-    std::uint16_t PC = 0xFFFC;     //Program Counter
-    std::uint8_t SP  = 0xFD;       //Stack Pointer. Address of the current part of the stack (also known as Stack Register).
-    std::uint8_t PS  = 0b00100100; //Processor Status
+    std::uint16_t PC;     //Program Counter
+    std::uint8_t  SP;       //Stack Pointer. Address of the current part of the stack (also known as Stack Register).
+    std::uint8_t  PS; //Processor Status
 
     //Registers
-    std::uint8_t A = 0x00; //accumulator
-    std::uint8_t X = 0x00; //Index Register X
-    std::uint8_t Y = 0x00; //Index Register Y
+    std::uint8_t A; //accumulator
+    std::uint8_t X; //Index Register X
+    std::uint8_t Y; //Index Register Y
 
-    std::uint8_t DMAValue = 0x00;
+    std::uint8_t DMAValue;
 
-    bool PutCycle = false;
+    bool PutCycle;
 
     //BOOLS FOR TRACKING NMI
-    bool NMIAllowed = true; //potentially set to false and set to true after a set number of cycles?
-    bool NMIActive  = false;
+    bool NMIAllowed; //potentially set to false and set to true after a set number of cycles?
+    bool NMIActive;
 
     //OPCODES
     //LDA
@@ -191,11 +194,13 @@ struct CPU
     static constexpr std::uint8_t INS_ROR_ABS  = 0x6E;
     static constexpr std::uint8_t INS_ROR_ABSX = 0x7E;
 
-    std::uint32_t Reset(Bus&);
+    void ConnectBus(Bus&);
 
-    std::uint8_t FetchByte(std::uint32_t&, Bus&);
+    std::uint32_t Reset();
 
-    std::uint16_t FetchWord( std::uint32_t&, Bus&);
+    std::uint8_t FetchByte(std::uint32_t&);
+
+    std::uint16_t FetchWord( std::uint32_t&);
 
     std::uint8_t ReadByte( std::uint32_t&, std::uint16_t, Bus&);
 

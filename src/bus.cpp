@@ -13,6 +13,19 @@ void Bus::ConnectPPU(PPU& ppu)
     ppu_ptr = &ppu;
 }
 
+void Bus::ConnectCPU(CPU& cpu)
+{
+    cpu_ptr = &cpu;
+}
+
+std::uint32_t Bus::Reset(std::string Cartridge)
+{
+    std::uint32_t CPUCycles = cpu_ptr->Reset();
+    ppu_ptr->Reset();
+    LoadCartridge(Cartridge);
+    return CPUCycles;
+}
+
 void Bus::LoadCartridge(std::string Cartridge)
 {
     std::ifstream stream(Cartridge, std::ios::in | std::ios::binary);

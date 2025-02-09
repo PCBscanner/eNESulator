@@ -1,6 +1,63 @@
 #include "../src/bus.h"
 #include "../src/ppu.h"
 
+void PPU::Reset()
+{
+    V = T = X = W  = 0;
+    PPUCTRL        = 0b00000000;
+    PPUMASK        = 0b00000000;
+    PPUSTATUS      = 0b10000000;
+    OAMADDR        = 0x0000;
+    OAMDATA        = 0x0000;
+    PPUSCROLL      = 0x0000;
+    PPUDATA        = 0x0000;
+    PPUDATABuffer  = 0x00;
+    OAMDMA         = 0x0000;
+    PPUSCROLLX     = 0x0000;
+    PPUSCROLLY     = 0x0000;
+    Scanline       = 0;
+    Cycle          = 0;
+    ShifterTracker = 0;
+    ShiftRegAttrLo = 0;
+    ShiftRegAttrHi = 0;
+    ShiftRegTileLo = 0;
+    ShiftRegTileHi = 0;
+
+    for(std::uint8_t i = 0; i<8; i++)
+    {
+        ShiftRegSpriteLo[i] = 0;
+        ShiftRegSpriteHi[i] = 0;
+    }
+
+    LatchNTByte    = 0;
+    LatchAttr      = 0;
+    LatchTileLo    = 0;
+    LatchTileHi    = 0;
+
+    OAM_n    = 0; //sprite index in OAM
+    OAM_m    = 0; //byte number for each sprite in OAM
+    NSprites = 0; //tracking the number of sprites in each frame
+
+    BGPixelVal    = 0;
+    BGPalette     = 0;
+    FGPixelVal    = 0;
+    FGPriority    = 0;
+    FGPalette     = 0;
+    FinalPixelVal = 0;
+    FinalPalette  = 0;
+
+    VPrev = 0; //used to determine the correct attribute byte
+
+    Sprite0HitPossible   = false;
+    Sprite0BeingRendered = false;
+    Sprite0HitDetected   = false;
+    RenderBackground     = true;
+    RenderSprites        = true;
+    NMI                  = false;
+    OddFrame             = false;
+    FrameComplete        = false;
+}
+
 //checking if the ppu shall set NMI
 bool PPU::SetNMI(Bus& bus)
 {

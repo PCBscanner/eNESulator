@@ -2,15 +2,20 @@
 #include <cstdint>
 #include <fstream>
 #include <vector>
+#include "../src/6502.h"
 #include "../src/apu.h"
 #include "../src/ppu.h"
 
 struct APU; //forward declaring the apu struct
+struct CPU;
+struct PPU;
 
 struct Bus
 {
 
     APU* apu_ptr;
+
+    CPU* cpu_ptr;
 
     PPU* ppu_ptr;
 
@@ -50,7 +55,10 @@ struct Bus
     const std::uint8_t CONTROLLER_RIGHT   = 0b10000000;
 
     void ConnectAPU(APU&);
+    void ConnectCPU(CPU&);
     void ConnectPPU(PPU&);
+
+    std::uint32_t Reset(std::string);
 
     void LoadCartridge(std::string);
 

@@ -2,13 +2,28 @@
 
 APU::APU()
 {
-    PopulateMixerLUTs();
+    Reset();
     pulse1.SweepAdjustment = 1;
 }
 
 APU::~APU()
 {
     //destructor in here
+}
+
+void APU::Reset()
+{
+    Cycle                 = 0;
+    Sequencer             = 0;
+    FrameInterrupt        = 0;
+    Pulse1_Output         = 0;
+    Pulse2_Output         = 0;
+    Triangle_Output       = 0;
+    Noise_Output          = 0;
+    DMC_Output            = 0;
+    FrameCounter5Step     = 0;
+    DisableFrameInterrupt = 0;
+    PopulateMixerLUTs();
 }
 
 void APU::ConnectBus(Bus& bus)
