@@ -6,7 +6,7 @@ This is my version of an emulator for the Nintendo Entertainment System. I've us
 
 It is still WIP, but has been tested and confirmed running with the following roms:
 
-- 1942.
+- '1942.
 - Castlevania.
 - Donkey Kong.
 - Excitebike.
