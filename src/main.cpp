@@ -82,6 +82,7 @@ int main(int argc, char** args)
     std::uint32_t NBytesBuffer   = NSamplesBuffer * BytesPerSample;
 
     //malloc returns void*: The malloc function allocates memory and returns a generic pointer of type void*.
+    //I've read that malloc should be avoided in C++, and to use new/free instead, but it seems that SDL uses malloc...
     void*  SoundBuffer  = malloc(NBytesBuffer); //pointer to the memory addr where SoundBuffer shall be stored
     float* SampleOut    = (float*)SoundBuffer; //we must then cast a type to it
     float  FilterOutput = 0;
@@ -139,7 +140,6 @@ int main(int argc, char** args)
         cpu.Execute(CPUCycles, bus);
     }
     CPUCycles = 0;
-
 
     bool NMI = false;
 
@@ -245,16 +245,11 @@ int main(int argc, char** args)
                 //note that by this stage, we have already downsampled with the filter
                 SampleOut[(2*AudioSampleCounter) + 0] = FilterOutput; //left channel
                 SampleOut[(2*AudioSampleCounter) + 1] = FilterOutput; //right channel
-                // *SampleOut++ = FilterOutput; //left channel
-                // *SampleOut++ = FilterOutput; //right channel
                 AudioSampleCounter++;
                 if(AudioSampleCounter == NSamplesBuffer) //checking if the buffer is full
                 {
-                    // printf("AudioSampleCounter: %03d\n", AudioSampleCounter);
-                    // while(SDL_GetQueuedAudioSize(1)){printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1));}
                     SDL_QueueAudio(1, SoundBuffer, NBytesBuffer); //send full buffer to audio queue
                     AudioSampleCounter = 0; //reset counter
-                    // printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1)/BytesPerSample);
                 }
                 APUFramesSinceLastSample -= NrAPUCyclesPerSample; //resetting the timer
             }
@@ -269,20 +264,13 @@ int main(int argc, char** args)
         SDL_SetRenderDrawColor( Renderer, 0x0, 0x00, 0x00, 0x00 ); //setting a background colour
 
         t2 = SDL_GetTicks();
-        // printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1)/BytesPerSample);
-        // while(SDL_GetQueuedAudioSize(1)){}
-        // while(SDL_GetQueuedAudioSize(1)){printf("SDL_GetQueuedAudioSize(1): %d\n",SDL_GetQueuedAudioSize(1));}
         //capping framerate
         if( ( t2 - t1 ) < Frametime )
         {
             SDL_Delay( Frametime - (t2 - t1) );
         }
 
-        // RenderPatternTables(Renderer, PatternTableTexture, FramebufferPatternTables);
-
         RenderScreen(Renderer, ScreenTexture, ppu.Framebuffer);
-
-        // RenderCPUStatus(Renderer, Font, CPUStatusStr);
 
         SDL_RenderPresent(Renderer);
 

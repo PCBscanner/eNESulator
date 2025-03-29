@@ -19,30 +19,30 @@ void cleanup(T *t, Args&&... args){
  * cleanup(std::forward<Args>(args)...), ending the recursion
  */
 template<>
-inline void cleanup<SDL_Window>(SDL_Window *win){
-	if (!win){
+inline void cleanup<SDL_Window>(SDL_Window *window){
+	if (!window){
 		return;
 	}
-	SDL_DestroyWindow(win);
+	SDL_DestroyWindow(window);
 }
 template<>
-inline void cleanup<SDL_Renderer>(SDL_Renderer *ren){
-	if (!ren){
+inline void cleanup<SDL_Renderer>(SDL_Renderer *renderer){
+	if (!renderer){
 		return;
 	}
-	SDL_DestroyRenderer(ren);
+	SDL_DestroyRenderer(renderer);
 }
 template<>
-inline void cleanup<SDL_Texture>(SDL_Texture *tex){
-	if (!tex){
+inline void cleanup<SDL_Texture>(SDL_Texture *texture){
+	if (!texture){
 		return;
 	}
-	SDL_DestroyTexture(tex);
+	SDL_DestroyTexture(texture);
 }
 template<>
-inline void cleanup<SDL_Surface>(SDL_Surface *surf){
-	if (!surf){
+inline void cleanup<SDL_Surface>(SDL_Surface *surface){
+	if (!surface){
 		return;
 	}
-	SDL_FreeSurface(surf);
+	SDL_FreeSurface(surface);
 }
