@@ -25,6 +25,7 @@ It is still WIP, but has been tested and confirmed running with the following ro
 
 ## Future improvements:
 - Fix DMC channel in the APU.
+- Fix audio glitches/crackling, likely caused by syncing to video and not audio.
 - Additional mappers.
 - Battery-backed RAM.
 - Save states.
