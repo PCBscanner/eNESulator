@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <iostream>
 #include <SDL2/SDL.h>
@@ -90,28 +91,22 @@ int main(int argc, char** args)
     SDL_OpenAudio(&AudioSettings, &AudioSettings_Actual);
     SDL_PauseAudio(0); //must un-pause audio first
 
-    //GAMES
-    // std::string ROM = "../data/roms/1942.nes";
-    // std::string ROM = "../data/roms/castlevania.nes";
-    // std::string ROM = "../data/roms/dk.nes";
-    // std::string ROM = "../data/roms/excitebike.nes";
-    // std::string ROM = "../data/roms/f1_race.nes";
-    // std::string ROM = "../data/roms/ice_climber.nes";
-    // std::string ROM = "../data/roms/mario_bros.nes";
-    // std::string ROM = "../data/roms/popeye.nes";
-    std::string ROM = "../data/roms/smb.nes";
-
-    //UTILITIES
-    // std::string ROM = "../data/test_roms/controller.nes";
-    // std::string ROM = "../data/test_roms/nestest.nes";
-    // std::string ROM = "../data/test_roms/palette_ram.nes";
-    // std::string ROM = "../data/test_roms/sprite_ram.nes";
-    // std::string ROM = "../data/test_roms/vram_access.nes";
-
-    //AUDIO UTILITIES
-    // std::string ROM = "../data/test_roms/noise.nes";
-    // std::string ROM = "../data/test_roms/square.nes";
-    // std::string ROM = "../data/test_roms/triangle.nes";
+    //Requesting user input for the ROM, and checking if it exists.
+    std::string ROM;
+    bool FileExists = false;
+    while(!FileExists)
+    {
+        std::cout << "Enter the full path to the ROM: ";
+        std::cin >> ROM;
+        if( std::filesystem::exists(ROM) )
+        {
+            FileExists = true;
+        }
+        else
+        {
+            std::cout << "ROM not found. Please try again." << std::endl;
+        }
+    }
 
     bus.ConnectAPU(apu);
     bus.ConnectCPU(cpu);
